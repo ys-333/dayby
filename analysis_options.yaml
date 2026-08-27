@@ -1,0 +1,25 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+  errors:
+    # Domain purity and clock discipline are enforced by tool/check_arch.sh,
+    # not the analyzer. These raise the cost of the mistakes it can catch.
+    invalid_annotation_target: ignore
+
+linter:
+  rules:
+    always_specify_types: false
+    prefer_final_locals: true
+    prefer_const_constructors: true
+    unnecessary_late: true
+    avoid_print: true

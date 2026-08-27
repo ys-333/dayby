@@ -1,0 +1,60 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:riyaz/features/history/history_screen.dart';
+import 'package:riyaz/features/home/home_screen.dart';
+import 'package:riyaz/features/insights/insights_screen.dart';
+
+part 'shell.g.dart';
+
+/// Which tab the shell is showing. A provider rather than local state so one
+/// screen can send the user to another — tapping a calendar day opens that day
+/// on the tracking tab rather than duplicating the editing UI.
+@riverpod
+class SelectedTab extends _$SelectedTab {
+  @override
+  int build() => 0;
+
+  void go(int index) => state = index;
+}
+
+class AppShell extends ConsumerWidget {
+  const AppShell({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final index = ref.watch(selectedTabProvider);
+
+    return Scaffold(
+      body: IndexedStack(
+        index: index,
+        children: const [
+          HomeScreen(),
+          HistoryScreen(),
+          InsightsScreen(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: ref.read(selectedTabProvider.notifier).go,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.check_circle_outline_rounded),
+            selectedIcon: Icon(Icons.check_circle_rounded),
+            label: 'Today',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights_rounded),
+            label: 'Insights',
+          ),
+        ],
+      ),
+    );
+  }
+}
