@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android Auto Backup rules (API 23-30).
+
+  The SQLite database is the entire product: years of behavioural history that
+  exists nowhere else. Losing it is unrecoverable, so it is included
+  deliberately rather than by default.
+
+  Journal and write-ahead files are excluded. Backing them up separately from
+  the database risks restoring an inconsistent pair, which is worse than
+  restoring a slightly older but coherent database.
+-->
+<full-backup-content>
+    <include domain="file" path="riyaz.sqlite" />
+    <exclude domain="file" path="riyaz.sqlite-journal" />
+    <exclude domain="file" path="riyaz.sqlite-wal" />
+    <exclude domain="file" path="riyaz.sqlite-shm" />
+</full-backup-content>

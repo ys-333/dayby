@@ -26,15 +26,15 @@ Two claims are tracked separately and neither implies the other:
 
 ## Current position
 
-**Phase:** 5, 6 and 7 complete → next is Phase 8 (widget) or Phase 9 (data safety)
+**Phase:** 9 complete → next is Phase 8 (widget)
 **Blocked on:** nothing
-**Last verified state:** 194 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 223 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
 
-**Recommendation:** do Phase 9 before Phase 8. A lost phone currently means
-total data loss, and that cost rises every day the app is actually used.
+Data safety landed before the widget, deliberately: a lost phone meant total
+data loss until Phase 9, and that cost rose every day the app was used.
 
 ---
 
@@ -56,10 +56,12 @@ total data loss, and that cost rises every day the app is actually used.
       `sqlite3_flutter_libs`, which is an eol no-op stub and was removed
 - [x] Stop hook blocks on a real analyze error + arch violation, combined —
       verified by injecting both into `lib/domain/`
-- [ ] Hook confirmed firing in a live session (needs `/hooks` or a restart —
-      `.claude/` did not exist when this session started)
+- [x] Hook confirmed firing in a live session — `build`. Verified end to end by
+      planting a domain-purity violation and attempting to stop: the hook
+      blocked completion and fed the violations back. Not merely "the script
+      works" — the gate actually gates.
 - [x] `git init` + generated code (`*.g.dart`, `*.freezed.dart`) gitignored — `build`
-- [ ] **First commit** — staged but not committed; yours to make
+- [x] **First commit** pushed to github.com/ys-333/dayby (`main`) — `build`
 
 ### Phase 1 notes / deferred
 - `go_router` is wired with a single placeholder route. Real routing lands with
@@ -275,8 +277,62 @@ Persistence landed here too — the engines had nothing to read from before.
 - [ ] **Device check (you):** completing from the widget actually works
 
 ## Phase 9 — Data safety
-- [ ] JSON export · [ ] Validated import · [ ] Android auto-backup
-- [ ] Round-trip: export → wipe → import → analytics identical
+- [x] JSON export — `unit`, `widget`. Versioned, self-describing format with a
+      `riyaz.backup` tag; dates stay human-readable so a damaged file can be
+      inspected and repaired by hand.
+- [x] Validated import — `unit`, `widget`. Validate → preview → import, never
+      straight to overwriting. Refuses non-JSON, foreign files, a format version
+      newer than this build, malformed dates and unknown enum values.
+- [x] Merge and replace modes — `unit`. Merge is idempotent: re-importing the
+      same file changes nothing, so a retry is always safe.
+- [x] Orphans are dropped with a warning rather than failing the whole import — `unit`
+- [x] Whole import runs in one transaction; a refused file leaves the database
+      untouched — `unit`
+- [x] Android Auto Backup — `build`. `allowBackup`, `fullBackupContent` (API
+      23–30) and `dataExtractionRules` (API 31+, cloud backup *and* device
+      transfer). Verified present in the merged manifest and both XML files
+      confirmed compiled into the APK. Journal/WAL files excluded so a restore
+      cannot pair a database with a mismatched journal.
+- [x] **Round trip: export → wipe → import → analytics identical** — `unit`.
+      Over a full synthetic year (20 commitments, schedule changes, pauses,
+      archived commitments): every count, the weighted completion to 1e-9, the
+      percentage, and **per-commitment** longest/current streak and recovery all
+      match. Rollups rebuild to the same numbers after the restore.
+- [x] Settings tab hosting the backup UI — `widget`
+- [x] Real file store covered by its own unit test (unicode, overwrite,
+      listing order, 500KB payload) — `unit`
+- [ ] **Export to a user-reachable location** — see below. Currently writes to
+      app documents and offers the JSON on the clipboard.
+
+### Blocked on a package decision
+Getting a file somewhere the user can actually reach — Downloads, a share
+sheet, Drive — needs the Storage Access Framework, which in Flutter means a
+plugin (`file_picker` or `share_plus`). CLAUDE.md forbids adding a dependency
+unasked, so export writes to the app's documents directory, shows the path, and
+puts the JSON on the clipboard. Android Auto Backup covers the lost-phone case
+meanwhile. **This needs a yes/no before V1 ships.**
+
+### Bug found and fixed during Phase 9
+- The settings widget test hung indefinitely rather than failing.
+  `testWidgets` runs in a fake-async zone where real file I/O never completes,
+  so a screen writing to disk during `pumpAndSettle` waits forever.
+  `BackupFileStore` is now an interface: screens take an in-memory double in
+  widget tests, and the real implementation has its own plain `test()` where
+  the event loop is real. Worth remembering — the same trap catches any future
+  screen that touches the filesystem.
+
+### Decisions taken
+- **Rollups are excluded from backups.** They are derived and rebuild
+  themselves; including them would let a backup carry a stale contradiction of
+  its own source data.
+- **Interpretation settings travel with the data.** Timezone, day boundary and
+  week start are in the file, because without them every stored civil date is
+  ambiguous. Import warns when they differ from the device.
+- **Hand-written codec, not codegen.** A backup format is a long-lived contract
+  with the user's own history; tying its shape to whatever the model classes
+  look like today would make old files unreadable after a refactor.
+- **Import refuses rather than guesses.** A half-understood backup is worse
+  than a rejected one, because it silently loses history.
 
 ## Phase 10 — Polish
 - [ ] Empty states · [ ] Error handling · [ ] Dark/light · [ ] Rotation

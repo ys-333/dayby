@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/features/history/history_screen.dart';
 import 'package:riyaz/features/home/home_screen.dart';
 import 'package:riyaz/features/insights/insights_screen.dart';
+import 'package:riyaz/features/settings/settings_screen.dart';
 
 part 'shell.g.dart';
 
@@ -32,6 +33,7 @@ class AppShell extends ConsumerWidget {
           HomeScreen(),
           HistoryScreen(),
           InsightsScreen(),
+          SettingsScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -52,6 +54,11 @@ class AppShell extends ConsumerWidget {
             icon: Icon(Icons.insights_outlined),
             selectedIcon: Icon(Icons.insights_rounded),
             label: 'Insights',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings_rounded),
+            label: 'Settings',
           ),
         ],
       ),

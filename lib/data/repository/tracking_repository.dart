@@ -109,6 +109,15 @@ class TrackingRepository {
     return _assemble(commitments, schedules, pauses, events);
   }
 
+  /// Everything, unfiltered by date. For export only — screens must use a
+  /// bounded range so a year of history never lands in a widget build.
+  Future<TrackingSnapshot> readAll() async => _assemble(
+        await _db.select(_db.commitments).get(),
+        await _db.select(_db.commitmentSchedules).get(),
+        await _db.select(_db.pausePeriods).get(),
+        await _db.select(_db.trackingEvents).get(),
+      );
+
   TrackingSnapshot _assemble(
     List<CommitmentRow> commitments,
     List<ScheduleRow> schedules,
