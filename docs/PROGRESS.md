@@ -1,5 +1,68 @@
 # Riyaz — build ledger
 
+## Start here (next session)
+
+Read this section, then **Current position** below. The rest is history.
+
+```sh
+export PATH="$HOME/development/flutter/bin:$PATH"      # not on the login PATH
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17          # Gradle/APK builds only
+export PATH="$JAVA_HOME/bin:$PATH"
+
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
+                                    # *.freezed.dart are gitignored, so a
+                                    # fresh clone will not analyze until this
+                                    # has run
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 253 green
+```
+
+**State:** all ten build phases are complete, committed and pushed to
+`github.com/ys-333/dayby` on `main`. The app builds, persists to SQLite, and
+has four tabs: Today, History, Insights, Settings.
+
+**It has never run on a device.** Everything is logic-verified only.
+
+### The four open items — none of them are code Claude can write
+
+1. **Feel check (you).** `flutter run -d <device>`, then: can you create a
+   commitment and track a day in under 10 seconds? That is the product's whole
+   promise and nothing in the test suite can answer it.
+2. **Widget device check (you).** The Kotlin in
+   `android/app/src/main/kotlin/.../RiyazWidgetProvider.kt` compiles and is
+   registered in the manifest, but **has never executed**. Place the widget,
+   confirm it draws, updates when you tick something, and opens the app on tap.
+3. **Export destination — needs your decision.** Export currently writes to the
+   app's documents directory and offers the JSON on the clipboard. Reaching
+   Downloads or a share sheet needs `file_picker` or `share_plus`, and CLAUDE.md
+   forbids adding a package unasked. **Answer yes or no and the work is small.**
+   Android Auto Backup already covers the lost-phone case.
+4. **Period-close review UI — needs your decision.** Never built. A closed
+   period's result is visible on History and Insights, but there is no
+   moment-of-closure summary. Decide whether you want one.
+
+### Two things worth knowing before touching the code
+
+- **The Stop hook is live.** `.claude/hooks/flutter-analyze.sh` runs
+  `tool/check_arch.sh` + `flutter analyze` and blocks completion if either is
+  dirty. It is not advisory.
+- **Widget tests run in a fake-async zone**, so real file I/O never completes
+  and a screen that writes to disk during `pumpAndSettle` hangs forever rather
+  than failing. That is why `BackupFileStore` is an interface with an in-memory
+  double. Any future screen touching the filesystem needs the same treatment.
+
+### Where things live
+
+| Path | What |
+|------|------|
+| `docs/specs/2026-08-28-…md` | product spec (Kotlin-era; stack section is obsolete) |
+| `lib/domain/` | pure Dart engines — no Flutter, no Drift, injected `Clock` |
+| `lib/data/` | Drift schema v2, repositories, backup codec, seeder loader |
+| `lib/features/<name>/` | one folder per screen area |
+| `tool/check_arch.sh` | enforces domain purity + clock discipline |
+
+---
+
 Tracks what is built AND how it was verified. Update this in the same commit as
 the work. A future session reads this file to know where things stand.
 
