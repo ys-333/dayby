@@ -7,6 +7,10 @@ import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
 
+import 'package:riyaz/app/formatting.dart';
+import 'package:riyaz/features/widget/widget_bridge.dart';
+import 'package:riyaz/features/widget/widget_payload.dart';
+
 import 'today_view.dart';
 
 part 'today_controller.g.dart';
@@ -143,4 +147,37 @@ class SelectedDate extends _$SelectedDate {
   void nextDay() => goTo(state.plusDays(1));
 
   void returnToToday() => goTo(ref.read(todayProvider));
+}
+
+@Riverpod(keepAlive: true)
+WidgetBridge widgetBridge(Ref ref) => const WidgetBridge();
+
+/// Keeps the home-screen widget in step with today.
+///
+/// Watches only *today*, never the selected date — the widget always shows the
+/// current day, and a user browsing back through history must not rewrite what
+/// their launcher displays.
+///
+/// Listens rather than transforming a stream: Riverpod 3 removed the `.stream`
+/// modifier, and this is a side effect on every new value rather than a value
+/// of its own.
+@Riverpod(keepAlive: true)
+class WidgetSync extends _$WidgetSync {
+  @override
+  int build() {
+    final today = ref.watch(todayProvider);
+    final bridge = ref.watch(widgetBridgeProvider);
+
+    ref.listen(todayViewProvider(today), (previous, next) {
+      final view = next.value;
+      if (view == null) return;
+      bridge
+          .push(WidgetPayload.fromView(view, fullDayLabel(view.date)))
+          .then((pushed) {
+        if (pushed) state = state + 1;
+      });
+    }, fireImmediately: true);
+
+    return 0;
+  }
 }

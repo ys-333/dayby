@@ -26,9 +26,9 @@ Two claims are tracked separately and neither implies the other:
 
 ## Current position
 
-**Phase:** 9 complete → next is Phase 8 (widget)
+**Phase:** 8 and 9 complete → only Phase 10 (polish) remains
 **Blocked on:** nothing
-**Last verified state:** 223 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 236 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -273,8 +273,46 @@ Persistence landed here too — the engines had nothing to read from before.
   exists right now rather than claiming a behavioural pattern.
 
 ## Phase 8 — Widget
-- [ ] Home-screen widget renders today
-- [ ] **Device check (you):** completing from the widget actually works
+- [x] Home-screen widget renders today — `build`, `unit`. Native
+      `AppWidgetProvider` + `RemoteViews`, fed by a `MethodChannel`
+      (`dev.riyaz/widget`). Kotlin compiles, the receiver is in the merged
+      manifest under its full class name, and both `riyaz_widget.xml` and
+      `riyaz_widget_info.xml` are confirmed compiled into the APK.
+- [x] Payload rendering and encoding — `unit`. 13 tests: every status has a
+      distinct glyph, skips leave the progress denominator, an empty day shows
+      a dash not 0%, unicode survives, and the JSON key set is asserted against
+      the Kotlin contract.
+- [x] Bridge failure modes — `unit`. A refusing launcher, a missing native
+      side, and a non-Android platform all degrade quietly rather than throwing.
+- [ ] **Device check (you):** place the widget, confirm it renders and updates,
+      and that tapping opens the app. **Nothing below is verified.**
+
+### What is NOT verified
+The Kotlin has never executed. Compiling and being registered in the manifest
+says nothing about whether the widget draws correctly, updates when the app
+writes, or survives a launcher restart. Treat the native half as `[!]` until
+it has run on a phone.
+
+### Decisions taken
+- **RemoteViews, not Jetpack Glance.** Glance needs Compose on the Gradle
+  classpath. The spec asked for Glance, but it predates the Flutter decision,
+  and this widget is a heading plus five rows. Zero new dependencies —
+  `MethodChannel` is built into Flutter, and the native side is ~120 lines.
+- **Dart renders every string.** The payload carries finished text; the Kotlin
+  does no arithmetic and knows nothing about skips, pauses or period targets.
+  A second implementation of the scoring rules would eventually disagree with
+  the first.
+- **Tap deep-links into the app rather than completing in place.** Completing
+  from the widget would need a background Dart isolate to run the accounting
+  engine. The spec explicitly allows deep-linking where widget limitations
+  prevent an action.
+- **Glyphs, not colours.** The launcher controls the theme and the size; a
+  colour-coded dot would be illegible on many launchers and would break the
+  same no-colour-alone rule the app follows everywhere.
+- **Five row slots.** A scrolling list needs a `RemoteViewsService`; beyond
+  five the widget says "+N more" rather than silently truncating.
+- **Push failures are swallowed.** The widget is a convenience; a launcher
+  that refuses an update must never break the running app.
 
 ## Phase 9 — Data safety
 - [x] JSON export — `unit`, `widget`. Versioned, self-describing format with a

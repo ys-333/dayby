@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/features/history/history_screen.dart';
 import 'package:riyaz/features/home/home_screen.dart';
+import 'package:riyaz/features/home/today_controller.dart';
 import 'package:riyaz/features/insights/insights_screen.dart';
 import 'package:riyaz/features/settings/settings_screen.dart';
 
@@ -25,6 +26,11 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(selectedTabProvider);
+
+    // Keeps the home-screen widget in step for as long as the app is open.
+    // Watched here rather than in a screen so it survives tab switches; the
+    // push itself is best-effort and never blocks the UI.
+    ref.watch(widgetSyncProvider);
 
     return Scaffold(
       body: IndexedStack(
