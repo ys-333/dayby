@@ -26,9 +26,9 @@ Two claims are tracked separately and neither implies the other:
 
 ## Current position
 
-**Phase:** 8 and 9 complete → only Phase 10 (polish) remains
+**Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 236 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 253 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -373,8 +373,62 @@ meanwhile. **This needs a yes/no before V1 ships.**
   than a rejected one, because it silently loses history.
 
 ## Phase 10 — Polish
-- [ ] Empty states · [ ] Error handling · [ ] Dark/light · [ ] Rotation
-- [ ] Accessibility labels
-- [ ] DB migration from a prior version — the v1→v2 step exists and compiles,
-      but has never been run against a real v1 database. Needs drift's schema
-      dump tooling to test properly.
+- [x] Empty states — `widget`. Every screen renders on an empty database
+      without throwing, and each explains itself rather than showing a blank
+      frame. Nothing eligible reads as an em dash, never a fabricated 0%.
+- [x] Error handling — `widget`. Every screen has loading and error branches;
+      a missing commitment and a malformed backup both fail readably.
+- [x] Dark and light — `widget`. All four screens render in both, and no Text
+      carries a hard-coded black that would vanish on a dark surface.
+- [x] Rotation and screen size — `widget`. Portrait (400x800), landscape
+      (800x400) and a small phone (320x568), plus 1.8x text scaling.
+- [x] Accessibility labels — `widget`. Rows announce name and state; calendar
+      cells announce their date and result, and a future day announces "not
+      yet" rather than a failure. Passes Flutter's own
+      `androidTapTargetGuideline` and `textContrastGuideline`.
+- [x] **DB migration from a prior version** — `migration`. A real schema-v1
+      database (DDL copied verbatim from a v1 build, not written from memory)
+      is populated, opened, and migrated: version advances to 2, every
+      commitment, schedule, pause and event survives including a unicode note,
+      the rollup table is created empty and usable, and foreign keys are
+      enforced on the migrated connection rather than only on fresh installs.
+
+### Bugs found and fixed during Phase 10
+Three real layout failures, all found by tests rather than inspection:
+- **History month summary overflowed by 124px at phone width.** A headline plus
+  four fixed-width counts in one row does not fit 400dp. Now a column, with
+  each count `Expanded` so the row divides the width it has.
+- **Insights overflowed by 441px at 1.8x text scale.** The year bars used hard
+  36dp and 44dp boxes for the month label and percentage; neither can hold
+  scaled text. Now `ConstrainedBox` minimums.
+- **History mode toggle sat in `AppBar.actions`.** A two-segment button beside
+  a title is too wide for a phone. Moved into the body.
+
+The 1.8x text-scale case is worth keeping in the suite: it is a real
+accessibility setting, and it broke a screen that looked fine at every normal
+size.
+
+### Not done, and why
+- **`SchemaVerifier`** (drift's generated step-file migration harness) was not
+  set up. It needs `drift_dev schema dump` output committed per version. The
+  hand-built v1 fixture tests the same migration path against real data today;
+  revisit when there is a v2 → v3 step to verify.
+- **Golden/screenshot tests.** They would pin down rendering, but goldens are
+  brittle across Flutter versions and none of this has been seen on a device
+  yet — pinning pixels before anyone has judged them is premature.
+
+---
+
+## Remaining work
+
+Everything left is either a device check only you can do, or a decision only
+you can make.
+
+- [ ] **Feel check:** create and track in under 10 seconds on a real phone
+- [ ] **Widget device check:** place it, confirm it renders, updates, and that
+      tapping opens the app. The Kotlin has never executed.
+- [ ] **Export destination decision:** reaching Downloads or a share sheet
+      needs `file_picker` or `share_plus`. Blocked on your yes/no.
+- [ ] Period-close review UI (what the user sees when a week ends) — designed
+      away rather than built; the period result is visible on the history and
+      insights screens, but there is no moment-of-closure summary.

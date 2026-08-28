@@ -23,21 +23,32 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('History'),
-        actions: [
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('Month')),
-              ButtonSegment(value: true, label: Text('Week')),
-            ],
-            selected: {_weekMode},
-            onSelectionChanged: (s) => setState(() => _weekMode = s.first),
+      appBar: AppBar(title: const Text('History')),
+      body: Column(
+        children: [
+          // In the body rather than AppBar.actions: a two-segment button plus
+          // a title overflows a phone-width app bar, and it overflows much
+          // harder once the user turns text scaling up.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Month')),
+                  ButtonSegment(value: true, label: Text('Week')),
+                ],
+                selected: {_weekMode},
+                onSelectionChanged: (s) =>
+                    setState(() => _weekMode = s.first),
+              ),
+            ),
           ),
-          const SizedBox(width: 12),
+          Expanded(
+            child: _weekMode ? const WeekGrid() : const _MonthCalendar(),
+          ),
         ],
       ),
-      body: _weekMode ? const WeekGrid() : const _MonthCalendar(),
     );
   }
 }
@@ -162,14 +173,21 @@ class _MonthSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final s = month.summary;
+
+    // A column, not one wide row: the headline plus four labelled counts do
+    // not fit across a phone, and they fit far worse once text scaling is
+    // turned up. Each count is Expanded so the row divides whatever width
+    // exists rather than demanding a fixed amount.
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
                   s.percent == null ? '—' : '${s.percent}%',
@@ -177,19 +195,27 @@ class _MonthSummary extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  'consistency',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'consistency',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const Spacer(),
-            _Count(label: 'Done', value: s.done),
-            _Count(label: 'Partial', value: s.partial),
-            _Count(label: 'Missed', value: s.missed),
-            _Count(label: 'Skipped', value: s.skipped),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _Count(label: 'Done', value: s.done),
+                _Count(label: 'Partial', value: s.partial),
+                _Count(label: 'Missed', value: s.missed),
+                _Count(label: 'Skipped', value: s.skipped),
+              ],
+            ),
           ],
         ),
       ),
@@ -206,9 +232,9 @@ class _Count extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(left: 14),
+    return Expanded(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('$value', style: theme.textTheme.titleMedium),
           Text(
@@ -216,6 +242,7 @@ class _Count extends StatelessWidget {
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

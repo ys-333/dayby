@@ -42,17 +42,7 @@ class Harness {
   /// Pumps [child] against this harness's database and frozen clock, with
   /// file writes captured in [writtenFiles].
   Future<void> pump(WidgetTester tester, Widget child) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          clockProvider.overrideWithValue(clock),
-          backupFileStoreProvider
-              .overrideWithValue(_InMemoryFileStore(writtenFiles)),
-        ],
-        child: MaterialApp(home: child),
-      ),
-    );
+    await tester.pumpWidget(scope(MaterialApp(home: child)));
     await tester.pumpAndSettle();
   }
 
@@ -82,6 +72,28 @@ class Harness {
   Future<void> wipe() async {
     await db.delete(db.commitments).go();
     await db.delete(db.occurrenceRollups).go();
+  }
+
+  /// Wraps [child] in this harness's provider scope without a MaterialApp,
+  /// so a caller can supply its own theme or MediaQuery.
+  ///
+  /// The override list is built inline rather than held in a field:
+  /// Riverpod 3 does not export `Override`, so the type cannot be named
+  /// outside the package.
+  Widget scope(Widget child) => ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          clockProvider.overrideWithValue(clock),
+          backupFileStoreProvider
+              .overrideWithValue(_InMemoryFileStore(writtenFiles)),
+        ],
+        child: child,
+      );
+
+  /// Pumps a widget that supplies its own MaterialApp (the real RiyazApp).
+  Future<void> pumpApp(WidgetTester tester, Widget app) async {
+    await tester.pumpWidget(scope(app));
+    await tester.pumpAndSettle();
   }
 
   Future<void> dispose() => db.close();

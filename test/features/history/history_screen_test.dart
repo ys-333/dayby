@@ -141,9 +141,12 @@ void main() {
 
       // The legend sits below the grid, so the outer list has to be scrolled.
       // Dragging it directly: the nested grid is also a Scrollable, which makes
-      // scrollUntilVisible ambiguous.
-      await tester.drag(find.byType(ListView), const Offset(0, -400));
-      await tester.pumpAndSettle();
+      // scrollUntilVisible ambiguous. Repeated drags rather than one large one,
+      // so the test does not depend on the exact height above the legend.
+      for (var i = 0; i < 4; i++) {
+        await tester.drag(find.byType(ListView), const Offset(0, -300));
+        await tester.pumpAndSettle();
+      }
 
       expect(find.text('Strong'), findsOneWidget);
       expect(find.text('Nothing tracked'), findsOneWidget);

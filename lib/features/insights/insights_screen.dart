@@ -51,12 +51,15 @@ class _Body extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                'last 90 days',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'last 90 days',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -207,13 +210,17 @@ class _YearBars extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Row(
               children: [
-                SizedBox(
-                  width: 36,
+                // Constrained rather than fixed: a hard 36dp cannot hold
+                // "Jul" once the user turns text scaling up, and the row
+                // overflows instead of the label shrinking.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 36),
                   child: Text(
                     shortMonth(entry.key),
                     style: theme.textTheme.labelSmall,
                   ),
                 ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -223,8 +230,9 @@ class _YearBars extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: 44,
+                const SizedBox(width: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 40),
                   child: Text(
                     entry.value.percent == null
                         ? '—'
