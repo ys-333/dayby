@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/formatting.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/app/shell.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
+import 'package:riyaz/domain/analytics/day_band.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/features/home/today_controller.dart';
 
@@ -256,37 +258,43 @@ class _Legend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    Widget swatch(Color bg, Color border, String label) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: bg,
-                border: Border.all(color: border, width: 1.5),
-              ),
+    final bands = context.bandColors;
+
+    // Drawn from the same styles the grid uses, ring weight included. This
+    // used to build its own swatches out of `scheme.*`, which made it a second
+    // definition of the band vocabulary that merely happened to agree — and
+    // stopped agreeing the moment weak and empty days started differing by
+    // ring weight. A legend that contradicts the thing it explains is worse
+    // than no legend.
+    Widget swatch(DayBand band, String label) {
+      final style = bands.forBand(band);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: style.fill,
+              border: Border.all(color: style.border, width: style.width),
             ),
-            const SizedBox(width: 6),
-            Text(label, style: theme.textTheme.labelSmall),
-          ],
-        );
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: theme.textTheme.labelSmall),
+        ],
+      );
+    }
 
     return Wrap(
       spacing: 16,
       runSpacing: 8,
       children: [
-        swatch(scheme.primary, scheme.primary, 'Strong'),
-        swatch(scheme.primaryContainer, scheme.primary, 'Partial'),
-        swatch(Colors.transparent, scheme.error, 'Weak'),
-        swatch(Colors.transparent, scheme.outlineVariant, 'Nothing tracked'),
-        swatch(
-          Colors.transparent,
-          scheme.outlineVariant.withValues(alpha: 0.4),
-          'Not yet',
-        ),
+        swatch(DayBand.strong, 'Strong'),
+        swatch(DayBand.partial, 'Partial'),
+        swatch(DayBand.weak, 'Weak'),
+        swatch(DayBand.none, 'Nothing tracked'),
+        swatch(DayBand.future, 'Not yet'),
       ],
     );
   }

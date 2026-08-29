@@ -615,6 +615,28 @@ Not done: bundling Newsreader. The decision rested on "one weight, ~50–80KB";
 Google Fonts ships it only as a 451KB variable font, and there is no subsetting
 tool on this machine. Left for a decision rather than quietly absorbed.
 
+**Device pass, Android 14 phone, generated year loaded.** Both themes render,
+every screen holds together, and two things only the phone could show:
+
+- **The calendar legend was a second definition of the band vocabulary.** It
+  built its swatches out of `scheme.*` rather than `BandColors`, so it happened
+  to agree until weak and empty days started differing by ring weight — at
+  which point the legend was actively teaching the wrong thing. Now drawn from
+  the same styles the grid uses, ring weight included.
+- **Momentum's four stat columns had no gutter**, so "Current streak" and
+  "Longest" rendered as one word. Spaced.
+
+Still open after the device pass, and better decided by eye than by argument:
+
+- The commitment emoji are full-colour and are now the loudest thing on a
+  deliberately muted screen. The palette lost that fight.
+- In light mode a strong day is near-black (the ramp's dark end), which is the
+  standard direction for a sequential ramp but reads heavy next to the sage
+  partial days.
+- The FAB still covers the last row, the greeting still costs ~180px, and
+  daily and period rows still carry identical weight. All three are Today's
+  structure, untouched here by design.
+
 
 
 ---
