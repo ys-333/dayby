@@ -50,7 +50,7 @@ class CalendarCell extends StatelessWidget {
                 color: band.fill,
                 border: Border.all(
                   color: isToday ? context.bandColors.todayRing : band.border,
-                  width: isToday ? 2.5 : 1.5,
+                  width: isToday ? 2.5 : band.width,
                 ),
               ),
               alignment: Alignment.center,

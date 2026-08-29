@@ -564,6 +564,58 @@ Deliberately left alone, so the palette commit is the one that moves them:
 `onSurfaceVariant` at ~20 call sites, `TrendChart`'s line and grid, and the
 calendar's fixed 13px day numeral.
 
+### The palette itself
+
+`lib/app/theme/palette.dart` holds two hand-built palettes — warm near-black
+and warm off-white — in place of one seed run through Material's generator. A
+generated scheme optimises for internal harmony and has no opinion about what
+a colour *means*, which is how a missed run ended up painted in the red a form
+uses for an invalid field.
+
+**Every value is solved, not chosen by eye,** and the maths now lives in
+`test/app/theme/palette_test.dart` rather than in a document. A palette
+verified once stays verified only until the first person nudges a hex code.
+
+Floors enforced on both palettes: 4.5:1 for text and glyphs, 3:1 for rings and
+dots that carry meaning, 1.45:1 between adjacent heat-ramp steps, and OKLab
+ΔE ≥ 6 between the three status hues under normal, protan, deutan and tritan
+vision.
+
+Three things the measurement caught that inspection had not:
+
+- **The recorded ratios were against the page background only.** Marks also sit
+  on cards, where contrast is lower. Re-solved against the worst surface each
+  mark can land on — the lightest one in dark mode, the darkest in light. Small
+  text on a card had been sitting at 4.48:1 while the notes said 4.78.
+- **The three status hues collapsed under colour-vision simulation.** They sat
+  at nearly identical lightness, which reads fine to full colour vision and
+  takes partial-vs-missed down to ΔE 3.0 under deuteranopia — the same brown.
+  They are now an evenly spaced lightness ladder: worst case 9.8 in dark, 8.0
+  in light. The ladder runs in the direction the statuses mean, done most
+  prominent and missed quietest, which is the opposite of what an optimiser
+  picks when you only ask it for separation.
+- **A weak day and an empty day were separated by ring colour alone** — the one
+  thing this app is not allowed to do. They now differ in ring weight too.
+
+Also: `today` no longer borrows partial's hue, and `missedFill` was cut rather
+than shipped, because no ink clears 4.5:1 on it in dark mode.
+
+`test/support/harness.dart` now pumps the real theme. It used to pump a bare
+`MaterialApp`, so every widget test — the contrast guideline included — was
+measuring stock Material against a palette the app does not ship. A passing
+accessibility check on colours nobody sees is worse than no check, because it
+reads like coverage.
+
+Logic verified: `flutter analyze` clean, `tool/check_arch.sh` clean, 290 tests
+pass (276 before). **Not feel verified — this one needs a device pass before it
+is anything better than `[!]`.** Contrast maths and CVD simulation say nothing
+about whether a screen of sage ticks is pleasant to open at 6am.
+
+Not done: bundling Newsreader. The decision rested on "one weight, ~50–80KB";
+Google Fonts ships it only as a 451KB variable font, and there is no subsetting
+tool on this machine. Left for a decision rather than quietly absorbed.
+
+
 
 ---
 

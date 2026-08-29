@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riyaz/app/providers.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/features/settings/backup_controller.dart';
@@ -41,8 +42,16 @@ class Harness {
 
   /// Pumps [child] against this harness's database and frozen clock, with
   /// file writes captured in [writtenFiles].
+  ///
+  /// Uses the real app theme rather than a bare `MaterialApp`. It used to use
+  /// the bare one, which meant every widget test — the contrast guideline
+  /// included — was measuring stock Material against a palette the app does
+  /// not ship. A passing accessibility check on colours nobody sees is worse
+  /// than no check, because it reads like coverage.
   Future<void> pump(WidgetTester tester, Widget child) async {
-    await tester.pumpWidget(scope(MaterialApp(home: child)));
+    await tester.pumpWidget(
+      scope(MaterialApp(theme: riyazTheme(Brightness.light), home: child)),
+    );
     await tester.pumpAndSettle();
   }
 

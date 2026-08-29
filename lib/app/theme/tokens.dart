@@ -43,6 +43,13 @@ abstract final class Sizes {
   /// than rediscovered by a failing test.
   static const double minTapTarget = 48;
 
+  /// The smallest a commitment row may be.
+  ///
+  /// Above [minTapTarget] on purpose. The floor is what a finger needs; this
+  /// is what a list needs to feel unhurried rather than crammed, which is the
+  /// difference between an app you open daily and one you avoid.
+  static const double rowMinHeight = 52;
+
   /// The status circle on a commitment row.
   static const double statusIndicator = 28;
 
