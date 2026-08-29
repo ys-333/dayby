@@ -44,7 +44,14 @@ class AppShell extends ConsumerWidget {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
-        onDestinationSelected: ref.read(selectedTabProvider.notifier).go,
+        onDestinationSelected: (i) {
+          // Tapping Today is how you get back to today: someone who browsed
+          // into history should not find last Tuesday still on screen. The
+          // calendar's day drill-down sets the tab directly, not through here,
+          // so it keeps the date it asked for.
+          if (i == 0) ref.read(selectedDateProvider.notifier).returnToToday();
+          ref.read(selectedTabProvider.notifier).go(i);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.check_circle_outline_rounded),

@@ -480,6 +480,37 @@ size.
   brittle across Flutter versions and none of this has been seen on a device
   yet — pinning pixels before anyone has judged them is premature.
 
+### Fixes from the first device run
+
+Five problems that only surfaced once the app ran against a generated year on a
+real phone. Logic verified: `flutter analyze` clean, 264 tests pass. Not feel
+verified.
+
+- **A skip inside a period dropped the whole period.** `AccountingEngine` let an
+  explicit skip settle any occurrence, but a skip is a statement about one day
+  and a period is scored over its target, not its days. A skipped Wednesday
+  marked the entire week skipped — pulling it out of the denominator and
+  discarding completions already recorded in it, so two done days scored `0 / 3`.
+  Now restricted to `DailyOccurrence`. Every earlier skip test was daily, which
+  is the only shape the check had ever been written for.
+- **The undo bar never went away.** Flutter arms a `SnackBar`'s dismiss timer
+  only from inside `ScaffoldMessengerState.build`, which never happens when the
+  bar is shown from the continuation after an awaited write. It animated in,
+  settled with no frames pending, and sat over the bottom of every tab
+  indefinitely. `_TodayListState` now owns the timeout. Pinned in
+  `test/features/home/snackbar_test.dart`.
+- **The commitment detail screen was unreachable.** Nothing anywhere opened it.
+  Added "View details" to the long-press sheet, which is now the only route in.
+- **Skip was offered on period rows, where it does nothing.** Skipping a day
+  inside "3x/week" has nothing to settle — the week is still asking for three —
+  so it recorded an event and visibly changed nothing. Hidden for period rows.
+- **The Today tab kept whatever day you had browsed to.** Tapping Today now
+  returns to today. The calendar's day drill-down sets the tab directly, so it
+  still keeps the date it asked for.
+
+Also added: the synthetic seeder is reachable from Settings in debug builds,
+behind a confirm — it replaces the database, so it asks first.
+
 ---
 
 ## Remaining work

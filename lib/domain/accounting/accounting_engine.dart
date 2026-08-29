@@ -30,8 +30,10 @@ class AccountingEngine {
   /// The ordering of the checks is the specification, not an implementation
   /// detail:
   ///
-  /// 1. An explicit skip wins outright. The user said "not this one", and that
-  ///    must never decay into a miss no matter what else is true.
+  /// 1. An explicit skip wins outright, but only for a [DailyOccurrence]. The
+  ///    user said "not this one", and that must never decay into a miss no
+  ///    matter what else is true. A [PeriodOccurrence] deliberately ignores
+  ///    skips — see below.
   /// 2. A met target is [done] immediately, even mid-period — hitting 4/4 on
   ///    Thursday is a finished week, not a pending one.
   /// 3. An open window is [pending]. Nothing becomes [missed] before it closes,
@@ -55,7 +57,17 @@ class AccountingEngine {
         .map((e) => e.note)
         .lastOrNull;
 
-    if (relevant.any((e) => e.kind == TrackingKind.skipped)) {
+    // A skip is a statement about one day, so it can only settle one day.
+    //
+    // A period is scored over its target, not its days: "3x/week" asks for
+    // three days out of seven and has no opinion about which. Letting a
+    // skipped Wednesday mark the whole week skipped dropped an entire week out
+    // of the denominator and discarded completions already recorded in it —
+    // two done days scoring as `0 / 3`. Found on device, where a generated
+    // year finally produced the combination; every earlier skip test was
+    // daily, which is the only shape this check was written for.
+    if (occurrence is DailyOccurrence &&
+        relevant.any((e) => e.kind == TrackingKind.skipped)) {
       return resolutionOf(
         occurrence: occurrence,
         status: OccurrenceStatus.skipped,

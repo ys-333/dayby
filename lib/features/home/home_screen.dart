@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -160,13 +162,37 @@ class _Progress extends StatelessWidget {
   }
 }
 
-class _TodayList extends ConsumerWidget {
+class _TodayList extends ConsumerStatefulWidget {
   const _TodayList({required this.view});
 
   final TodayView view;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TodayList> createState() => _TodayListState();
+}
+
+class _TodayListState extends ConsumerState<_TodayList> {
+  static const Duration _undoWindow = Duration(seconds: 4);
+
+  /// The undo bar's own timeout, owned here rather than left to the framework.
+  ///
+  /// Flutter arms a SnackBar's dismiss timer only from inside
+  /// `ScaffoldMessengerState.build`, and on this screen that never happens when
+  /// the bar is shown from the continuation after an awaited write: it animates
+  /// in, settles with no frames pending, and then sits over the bottom of every
+  /// tab forever. Reproduced on device and pinned in `snackbar_test.dart`.
+  Timer? _undoTimer;
+
+  TodayView get view => widget.view;
+
+  @override
+  void dispose() {
+    _undoTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 96),
       itemCount: view.items.length,
@@ -174,8 +200,8 @@ class _TodayList extends ConsumerWidget {
         final item = view.items[index];
         return CommitmentTile(
           item: item,
-          onTap: () => _advance(context, ref, item),
-          onLongPress: () => _showActions(context, ref, item),
+          onTap: () => _advance(context, item),
+          onLongPress: () => _showActions(context, item),
         );
       },
     );
@@ -186,7 +212,6 @@ class _TodayList extends ConsumerWidget {
   /// accidental tap is reversible without opening a menu.
   Future<void> _advance(
     BuildContext context,
-    WidgetRef ref,
     TodayItem item,
   ) async {
     final actions = ref.read(trackingActionsProvider);
@@ -196,12 +221,11 @@ class _TodayList extends ConsumerWidget {
       _ when item.isCountable => await actions.increment(item, view.date),
       _ => await actions.markDone(item, view.date),
     };
-    if (context.mounted) _offerUndo(context, ref, token);
+    if (context.mounted) _offerUndo(context, token);
   }
 
   Future<void> _showActions(
     BuildContext context,
-    WidgetRef ref,
     TodayItem item,
   ) async {
     final actions = ref.read(trackingActionsProvider);
@@ -228,12 +252,18 @@ class _TodayList extends ConsumerWidget {
                 title: const Text('Mark partial'),
                 onTap: () => Navigator.pop(context, 'partial'),
               ),
-              ListTile(
-                leading: const Icon(Icons.remove_circle_outline_rounded),
-                title: const Text('Skip'),
-                subtitle: const Text("Won't count against consistency"),
-                onTap: () => Navigator.pop(context, 'skip'),
-              ),
+              // Daily rows only. A skip settles one day, and a period is scored
+              // over its target rather than its days, so skipping a day inside
+              // "3x/week" has nothing to settle — the week is still asking for
+              // three. Offering it here would record an event and visibly
+              // change nothing.
+              if (!item.isPeriod)
+                ListTile(
+                  leading: const Icon(Icons.remove_circle_outline_rounded),
+                  title: const Text('Skip'),
+                  subtitle: const Text("Won't count against consistency"),
+                  onTap: () => Navigator.pop(context, 'skip'),
+                ),
               // Only offered once something is recorded: a note attaches to a
               // tracking event, so there is nothing to attach it to on an empty
               // day. Showing a dead menu item would be worse than hiding it.
@@ -249,6 +279,15 @@ class _TodayList extends ConsumerWidget {
                 title: const Text('Clear'),
                 onTap: () => Navigator.pop(context, 'clear'),
               ),
+              const Divider(height: 1),
+              // The only way into the per-commitment screen. Its stats are the
+              // point of tracking, so it cannot stay unreachable.
+              ListTile(
+                leading: const Icon(Icons.bar_chart_rounded),
+                title: const Text('View details'),
+                subtitle: const Text('Streaks, consistency and history'),
+                onTap: () => Navigator.pop(context, 'details'),
+              ),
             ],
           ),
         ),
@@ -258,7 +297,7 @@ class _TodayList extends ConsumerWidget {
     if (choice == null || !context.mounted) return;
 
     if (choice == 'note') {
-      await _editNote(context, ref, item);
+      await _editNote(context, item);
       return;
     }
 
@@ -272,12 +311,11 @@ class _TodayList extends ConsumerWidget {
       'skip' => await actions.skip(item, view.date),
       _ => await actions.clear(item, view.date),
     };
-    if (context.mounted) _offerUndo(context, ref, token);
+    if (context.mounted) _offerUndo(context, token);
   }
 
   Future<void> _editNote(
     BuildContext context,
-    WidgetRef ref,
     TodayItem item,
   ) async {
     final note = await showDialog<String>(
@@ -298,19 +336,27 @@ class _TodayList extends ConsumerWidget {
         );
   }
 
-  void _offerUndo(BuildContext context, WidgetRef ref, UndoToken token) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(token.label),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'UNDO',
-            onPressed: () => ref.read(trackingActionsProvider).undo(token),
-          ),
+  void _offerUndo(BuildContext context, UndoToken token) {
+    final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: Text(token.label),
+        duration: _undoWindow,
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () => ref.read(trackingActionsProvider).undo(token),
         ),
-      );
+      ),
+    );
+
+    final timer = Timer(_undoWindow, () {
+      if (mounted) controller.close();
+    });
+    _undoTimer?.cancel();
+    _undoTimer = timer;
+    // Dismissed by the user, or replaced by the next action: stop our timeout
+    // so it cannot close a later bar.
+    controller.closed.then((_) => timer.cancel());
   }
 }
 

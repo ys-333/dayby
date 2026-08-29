@@ -6,6 +6,7 @@ import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/features/history/history_screen.dart';
 import 'package:riyaz/features/home/home_screen.dart';
+import 'package:riyaz/features/home/widgets/status_indicator.dart';
 import 'package:riyaz/features/insights/insights_screen.dart';
 import 'package:riyaz/features/settings/settings_screen.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -238,6 +239,60 @@ void main() {
       await h.pumpApp(tester, const RiyazApp());
       expect(tester.takeException(), isNull);
       expect(find.byType(NavigationBar), findsOneWidget);
+    });
+
+    testWidgets('tapping the Today tab comes back to today', (tester) async {
+      await seed();
+      await h.pump(tester, const AppShell());
+
+      await tester.tap(find.byTooltip('Previous day'));
+      await tester.pumpAndSettle();
+      expect(find.text('Thursday, Aug 27'), findsOneWidget,
+          reason: 'browsed back a day');
+
+      await tester.tap(find.text('Insights').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Today').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Friday, Aug 28'), findsOneWidget,
+          reason: 'Today should mean today, not the day left on screen');
+    });
+
+    testWidgets('a calendar day still opens that day on the tracking tab',
+        (tester) async {
+      await seed();
+      await h.pump(tester, const AppShell());
+
+      await tester.tap(find.text('History').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Week'));
+      await tester.pumpAndSettle();
+
+      // Week of Aug 24-30, Monday first: index 2 is Wednesday the 26th.
+      await tester.tap(find.byType(StatusIndicator).at(2));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Wednesday, Aug 26'), findsOneWidget,
+          reason: 'the drill-down sets the tab directly and keeps its date');
+    });
+
+    testWidgets('the per-commitment screen is reachable from a long press',
+        (tester) async {
+      await seed();
+      await h.pumpApp(tester, const RiyazApp());
+
+      await tester.longPress(find.text('Running'));
+      await tester.pumpAndSettle();
+      expect(find.text('View details'), findsOneWidget,
+          reason: 'the only route into the detail screen');
+
+      await tester.tap(find.text('View details'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('MOMENTUM'), findsOneWidget,
+          reason: 'the detail screen should be showing its stats');
     });
   });
 }

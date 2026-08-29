@@ -312,6 +312,59 @@ void main() {
       expect(r.status, OccurrenceStatus.pending);
       expect(r.progressLabel, '1 / 2');
     });
+
+    // A skipped day used to mark the whole week skipped and reset `completed`
+    // to zero, so two real completions rendered as "0 / 3" and the week left
+    // the denominator entirely. Found on a device, not by these tests — every
+    // other skip case here is daily.
+    test('a skipped day does not skip the whole week', () {
+      final r = resolveWeekly(
+        from: d(2026, 8, 24),
+        to: d(2026, 8, 30),
+        target: 3,
+        events: [
+          event(d(2026, 8, 25)),
+          event(d(2026, 8, 26), kind: TrackingKind.skipped),
+          event(d(2026, 8, 28)),
+        ],
+      ).single;
+
+      expect(r.status, OccurrenceStatus.pending);
+      expect(r.completed, 2, reason: 'completions must survive a skipped day');
+      expect(r.progressLabel, '2 / 3');
+    });
+
+    test('a skipped day still leaves the week able to close short', () {
+      final r = resolveWeekly(
+        from: d(2026, 8, 17),
+        to: d(2026, 8, 23),
+        target: 3,
+        events: [
+          event(d(2026, 8, 18)),
+          event(d(2026, 8, 19), kind: TrackingKind.skipped),
+        ],
+      ).single;
+
+      expect(r.status, OccurrenceStatus.partial);
+      expect(r.completed, 1);
+      expect(r.isEligible, isTrue, reason: 'the week stays in the denominator');
+    });
+
+    test('a skipped day cannot stop a met target from being done', () {
+      final r = resolveWeekly(
+        from: d(2026, 8, 24),
+        to: d(2026, 8, 30),
+        target: 2,
+        events: [
+          event(d(2026, 8, 25)),
+          event(d(2026, 8, 26), kind: TrackingKind.skipped),
+          event(d(2026, 8, 27)),
+        ],
+      ).single;
+
+      expect(r.status, OccurrenceStatus.done);
+      expect(r.completed, 2);
+    });
   });
 
   group('statusOnDate', () {

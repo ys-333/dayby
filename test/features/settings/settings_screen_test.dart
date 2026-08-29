@@ -166,4 +166,42 @@ void main() {
       expect(h.writtenFiles.values.single, clipboard.single);
     });
   });
+
+  group('the synthetic seeder', () {
+    testWidgets('loads a year of history and marks the rollups stale',
+        (tester) async {
+      final originalId = await seed();
+      await h.pump(tester, const SettingsScreen());
+
+      await tester.tap(find.text('Load synthetic data'));
+      await tester.pumpAndSettle();
+
+      // Destructive, so it must ask before wiping real history.
+      expect(find.text('Replace everything with test data?'), findsOneWidget);
+      await tester.tap(find.text('Replace'));
+      await tester.pumpAndSettle();
+
+      final commitments = await h.db.select(h.db.commitments).get();
+      expect(commitments.length, greaterThan(1),
+          reason: 'the generated commitments should have replaced the seed');
+      expect(commitments.any((c) => c.id == originalId), isFalse,
+          reason: 'load replaces rather than merges');
+
+      final events = await h.db.select(h.db.trackingEvents).get();
+      expect(events, isNotEmpty, reason: 'a year of behaviour was generated');
+    });
+
+    testWidgets('cancelling leaves the database alone', (tester) async {
+      await seed();
+      await h.pump(tester, const SettingsScreen());
+
+      await tester.tap(find.text('Load synthetic data'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      final commitments = await h.db.select(h.db.commitments).get();
+      expect(commitments.single.name, 'Running');
+    });
+  });
 }

@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/data/backup/backup_document.dart';
 import 'package:riyaz/data/backup/backup_service.dart';
+import 'package:riyaz/data/seed/seed_loader.dart';
+import 'package:riyaz/domain/seed/synthetic_seeder.dart';
 
 import 'backup_controller.dart';
 
@@ -72,6 +75,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: Text(settings.timezoneName),
             enabled: false,
           ),
+          if (kDebugMode) ...[
+            const Divider(),
+            const _Header('Developer'),
+            ListTile(
+              leading: const Icon(Icons.science_rounded),
+              title: const Text('Load synthetic data'),
+              subtitle: const Text('A year of generated history'),
+              onTap: _busy ? null : _loadSeed,
+            ),
+          ],
         ],
       ),
     );
@@ -168,6 +181,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'Imported ${result.inserted} records'
           '${result.skipped > 0 ? ', skipped ${result.skipped} already present' : ''}'
           '${result.dropped > 0 ? ', dropped ${result.dropped} orphaned' : ''}.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Debug builds only. The analytics screens say almost nothing against a
+  /// database a day old, and waiting months for real history is not a plan.
+  /// Destructive, so it asks first.
+  Future<void> _loadSeed() async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Replace everything with test data?'),
+        content: const Text(
+          'This deletes the commitments and history already on this device '
+          'and loads a generated year in their place.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+    if (proceed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final data =
+          const SyntheticSeeder().generate(endingOn: ref.read(todayProvider));
+      await SeedLoader(ref.read(appDatabaseProvider)).load(data);
+
+      // The loader writes straight to the tables, so nothing on the tracking
+      // repository's write path has told the rollups they are stale.
+      final earliest = data.commitments
+          .map((c) => c.startedOn)
+          .reduce((a, b) => a < b ? a : b);
+      await ref.read(rollupRepositoryProvider).markStale(earliest);
+
+      if (!mounted) return;
+      setState(() => _status = 'Loaded ${data.commitments.length} commitments '
+          'and ${data.events.length} events.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
