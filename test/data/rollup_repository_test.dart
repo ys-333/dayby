@@ -6,6 +6,7 @@ import 'package:riyaz/data/repository/rollup_repository.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/accounting/accounting_engine.dart';
 import 'package:riyaz/domain/analytics/analytics_engine.dart';
+import 'package:riyaz/domain/analytics/scoring.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/domain/recurrence/recurrence_engine.dart';
@@ -144,6 +145,76 @@ void main() {
       );
       expect(months.keys, contains(d(2026, 8, 1)));
       expect(months[d(2026, 8, 1)]!.done, 5);
+    });
+  });
+
+  group('the logic that built a rollup is part of its validity', () {
+    // A rollup caches a resolution result, so it is only good while the rules
+    // that produced it hold. The watermark sees changed data and is blind to a
+    // changed rule; without the version stamp these reads all serve numbers
+    // the current engine would never produce.
+    RollupRepository withWeights(ScoringWeights weights) {
+      final calendar = calendarFor('Asia/Kolkata');
+      return RollupRepository(
+        db,
+        ResolutionService(
+          repository: tracking,
+          accounting: AccountingEngine(
+            calendar: calendar,
+            recurrence: RecurrenceEngine(calendar),
+            weights: weights,
+          ),
+          clock: clock,
+        ),
+      );
+    }
+
+    test('changing the scoring weights rebuilds the cache', () async {
+      final id = await seed(doneInAugust: [1, 2, 3]);
+      await tracking.record(
+        commitmentId: id,
+        date: d(2026, 8, 4),
+        kind: TrackingKind.partial,
+        nowUtc: clock.nowUtc(),
+        label: 'partial',
+      );
+      await rollups.ensureFresh(year);
+      expect((await rollups.summaryFor(year)).weightedCompletion, 3.5);
+
+      // Same database, same events, different rule.
+      final quarter = withWeights(const ScoringWeights(partial: 0.25));
+      await quarter.ensureFresh(year);
+
+      expect((await quarter.summaryFor(year)).weightedCompletion, 3.25,
+          reason: 'the cache was built under partial = 0.5');
+    });
+
+    test('a database written before the stamp existed is rebuilt', () async {
+      await seed(doneInAugust: [1, 2]);
+      await rollups.ensureFresh(year);
+
+      // An upgrade from a build with no version marker: the rows on disk came
+      // from rules this code cannot identify, so they cannot be trusted.
+      await (db.delete(db.settings)
+            ..where((t) => t.key.equals('rollup.logicVersion')))
+          .go();
+      await db.delete(db.occurrenceRollups).go();
+
+      await rollups.ensureFresh(year);
+      expect((await rollups.summaryFor(year)).done, 2,
+          reason: 'a missing stamp must force a rebuild, not serve nothing');
+    });
+
+    test('an unchanged stamp does not rebuild', () async {
+      await seed(doneInAugust: [1, 2]);
+      await rollups.ensureFresh(year);
+
+      // Deleting the events would empty any rebuild. The summary surviving is
+      // what proves the second call reused the cache rather than recomputing.
+      await db.delete(db.trackingEvents).go();
+      await rollups.ensureFresh(year);
+
+      expect((await rollups.summaryFor(year)).done, 2);
     });
   });
 
