@@ -643,8 +643,7 @@ Still open after the device pass, and better decided by eye than by argument:
 
 ## Remaining work
 
-Everything left is either a device check only you can do, or a decision only
-you can make.
+### Device checks and decisions — nothing here is code Claude can write
 
 - [ ] **Feel check:** create and track in under 10 seconds on a real phone
 - [ ] **Widget device check:** place it, confirm it renders, updates, and that
@@ -654,3 +653,35 @@ you can make.
 - [ ] Period-close review UI (what the user sees when a week ends) — designed
       away rather than built; the period result is visible on the history and
       insights screens, but there is no moment-of-closure summary.
+
+### Four designed screens, none built
+
+`docs/design/` holds the **Riyaz Redesign** canvas — five artboards, committed
+because they were living in a session scratchpad under `/private/tmp` and would
+have been cleaned up. Read `docs/design/README.md` first; the annotations in
+`canvas.json` are the argument and the markup is only the evidence.
+
+The design-system board is built — it is the palette work above. The four screen
+boards are not, and they are ordinary implementation work, not device checks or
+decisions:
+
+- [ ] **Insights: the load warning reads as an error.**
+      `insights_screen.dart:175` paints it `colorScheme.errorContainer`. It is
+      advice, so it should read as advice. Smallest of the four.
+- [ ] **History: period rows break the week grid.** `week_grid.dart:205`
+      branches on `isPeriod` and draws a pill with no day cells, so those rows
+      do not line up with the M–T–W header and the grid reads as a rendering
+      bug. The board keeps seven columns on every row, marks the days a target
+      was actually met, and moves the tally into the label.
+- [ ] **Detail: three actions are missing entirely.** No edit, no pause, no
+      archive anywhere in `commitment_detail_screen.dart`. The board also
+      replaces the stat wall with one lead figure and a *dated* twelve-week
+      grid. This is missing function, not only layout.
+- [ ] **Today: the structure the device pass complained about.** The three open
+      items above — FAB over the last row, ~180px greeting, daily and period
+      rows at identical weight — are exactly what this board answers. Biggest
+      change of the four: dropping the FAB means rehoming add-commitment.
+
+Also unbuilt, and it cuts across all four: **Newsreader is not bundled**, so
+every serif on every board renders in the device sans. See the type note in
+`docs/design/README.md`.

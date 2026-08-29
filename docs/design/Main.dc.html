@@ -1,0 +1,244 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #8FB39A; text-decoration: none; }
+    a:hover { color: #B4CDBB; }
+    .rz { font-family: system-ui, "Roboto", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+    .rz-ov { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #878073; }
+    .rz-row { cursor: pointer; transition: background 120ms ease; border-radius: 10px; }
+    .rz-row:hover { background: #1B1915; }
+    .rz-row:active { background: #23201B; }
+  </style>
+</helmet>
+
+<div class="rz" style="width: 390px; height: 844px; background: #14120E; color: #F2EEE6; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; padding: 14px 16px 0 16px;">
+
+    <div style="display: flex; align-items: center; justify-content: space-between; height: 40px;">
+      <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="#9E988B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+      <div style="font-size: 14px; font-weight: 500; color: #9E988B; letter-spacing: 0.01em;">Saturday, 29 August</div>
+      <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="#2C2924" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+    </div>
+
+    <div style="padding: 0 4px; margin-top: 2px;">
+      <div style="font-family: Newsreader, Georgia, serif; font-size: 34px; line-height: 40px; font-weight: 400; color: #F2EEE6; letter-spacing: -0.005em;">{{headline}}</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 16px; padding: 0 4px;">
+      <div style="display: flex; align-items: flex-end; gap: 5px; height: 24px;">
+        <sc-for list="{{strip}}" as="d" hint-placeholder-count="14">
+          <div style="flex-grow: 1; flex-basis: 0; min-width: 0; height: 24px; border-radius: 3px; background: {{d.bg}}; box-shadow: {{d.ring}};"></div>
+        </sc-for>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div style="font-size: 11px; color: #878073; letter-spacing: 0.01em;">Last 14 days</div>
+        <div style="font-size: 11px; color: #878073; letter-spacing: 0.01em;">{{stripNote}}</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 22px; display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px;">
+      <div class="rz-ov">Today</div>
+      <div class="rz-ov" style="color: #62836B;">{{todayCount}}</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; margin-top: 4px;">
+      <sc-for list="{{daily}}" as="item" hint-placeholder-count="5">
+        <div class="rz-row" onClick="{{item.tap}}" style="height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 4px;">
+          <svg width="21" height="21" viewBox="0 0 24 24" style="flex-shrink: 0;" aria-hidden="true"><path d="{{item.icon}}" fill="none" stroke="{{item.iconInk}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+            <div style="font-size: 16px; line-height: 22px; font-weight: 500; color: {{item.ink}};">{{item.name}}</div>
+            <sc-if value="{{item.hasNote}}" hint-placeholder-val="{{true}}">
+              <div style="font-size: 12px; line-height: 16px; color: #878073;">{{item.note}}</div>
+            </sc-if>
+          </div>
+          <sc-if value="{{item.done}}" hint-placeholder-val="{{true}}">
+            <svg width="26" height="26" viewBox="0 0 26 26" style="flex-shrink: 0;" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="#8FB39A"></circle><path d="M8 13.4l3.4 3.2L18 9.6" fill="none" stroke="#14120E" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </sc-if>
+          <sc-if value="{{item.notDone}}" hint-placeholder-val="{{false}}">
+            <svg width="26" height="26" viewBox="0 0 26 26" style="flex-shrink: 0;" aria-hidden="true"><circle cx="13" cy="13" r="11.1" fill="none" stroke="#6B665C" stroke-width="1.6"></circle></svg>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin-top: 16px; display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px;">
+      <div class="rz-ov">This week</div>
+      <div class="rz-ov" style="color: #62836B;">Never late</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; margin-top: 4px;">
+      <sc-for list="{{week}}" as="item" hint-placeholder-count="4">
+        <div class="rz-row" onClick="{{item.tap}}" style="height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 4px;">
+          <svg width="21" height="21" viewBox="0 0 24 24" style="flex-shrink: 0;" aria-hidden="true"><path d="{{item.icon}}" fill="none" stroke="{{item.iconInk}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="flex-grow: 1; font-size: 16px; line-height: 22px; font-weight: 500; color: {{item.ink}}; min-width: 0;">{{item.name}}</div>
+          <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+            <sc-for list="{{item.pips}}" as="p" hint-placeholder-count="3">
+              <div style="width: 9px; height: 9px; border-radius: 999px; background: {{p.bg}}; box-shadow: {{p.ring}};"></div>
+            </sc-for>
+          </div>
+          <div style="width: 46px; text-align: right; font-size: 13px; color: {{item.countInk}}; font-variant-numeric: tabular-nums; flex-shrink: 0;">{{item.count}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #1B1915; border-radius: 10px;">
+      <svg width="17" height="17" viewBox="0 0 24 24" style="flex-shrink: 0;" aria-hidden="true"><path d="M4.5 12.6l4.6 4.4L19.5 7" fill="none" stroke="#8FB39A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div style="font-size: 13px; line-height: 18px; color: #9E988B;">Books and Long walk are done for the week</div>
+    </div>
+
+  </div>
+
+  <div style="height: 76px; flex-shrink: 0; border-top: 1px solid #26231E; display: flex; align-items: flex-start; padding-top: 10px; background: #14120E;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="#F2EEE6" stroke-width="1.6"></circle><path d="M8.4 12.2l2.5 2.4 4.7-5.2" fill="none" stroke="#F2EEE6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div style="font-size: 11px; font-weight: 500; color: #F2EEE6;">Today</div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15v13h-15zM4.5 10.5h15M8.5 4v4M15.5 4v4" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div style="font-size: 11px; color: #878073;">History</div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15.5l4.5-5 3.5 3 7-8.5" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 19.5h16" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round"></path></svg>
+      <div style="font-size: 11px; color: #878073;">Insights</div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="#878073" stroke-width="1.5"></circle><path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M18 6l-1.6 1.6M7.6 16.4L6 18M18 18l-1.6-1.6M7.6 7.6L6 6" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round"></path></svg>
+      <div style="font-size: 11px; color: #878073;">Settings</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+var ICON = {
+  briefcase: 'M3.5 8.5h17v11h-17zM8.8 8.5V6.2a1.6 1.6 0 0 1 1.6-1.6h3.2a1.6 1.6 0 0 1 1.6 1.6v2.3',
+  run: 'M16 4.6a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 1 0 0-3.2M6.5 20l3.2-5.4 3.1 2.1 1.4-4.2M13.8 12.5l4.2-2.1M9.8 9.2l3.6-2.1 2.6 3.1 3.1.5',
+  meditate: 'M12 4.6a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 1 0 0-3.4M12 9.2v4.6M5.5 19.4c1.6-3.2 4-4.8 6.5-4.8s4.9 1.6 6.5 4.8M7.5 12.4L12 14.4l4.5-2',
+  book: 'M4 5.5h5.5A2.5 2.5 0 0 1 12 8v11a2 2 0 0 0-2-2H4zM20 5.5h-5.5A2.5 2.5 0 0 0 12 8v11a2 2 0 0 1 2-2h6z',
+  monitor: 'M3.5 5.5h17v10h-17zM9 19.5h6M12 15.5v4',
+  dumbbell: 'M4 9.5v5M7 7.5v9M17 7.5v9M20 9.5v5M7 12h10',
+  waves: 'M3 15.6c1.8 0 1.8 1.6 3.5 1.6s1.7-1.6 3.5-1.6 1.8 1.6 3.5 1.6 1.7-1.6 3.5-1.6 1.8 1.6 3.5 1.6M3 10.6c1.8 0 1.8 1.6 3.5 1.6s1.7-1.6 3.5-1.6 1.8 1.6 3.5 1.6 1.7-1.6 3.5-1.6 1.8 1.6 3.5 1.6',
+  cap: 'M2.5 9.5L12 5.5l9.5 4L12 13.5zM6.5 11.3V16c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-4.7'
+};
+
+var HEAT = ['#26231E', '#42584A', '#62836B', '#87AC91', '#AED4B8'];
+var WORDS = ['Nothing', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      daily: [
+        { id: 'finmonk', name: 'Finmonk', icon: 'briefcase', done: true },
+        { id: 'running', name: 'Running', icon: 'run', done: true },
+        { id: 'meditate', name: 'Meditate', icon: 'meditate', done: true, note: '20 minutes, before the first call' },
+        { id: 'reading', name: 'Reading', icon: 'book', done: false },
+        { id: 'otto2', name: 'Work on Otto 2', icon: 'monitor', done: false }
+      ],
+      week: [
+        { id: 'gym', name: 'Gym', icon: 'dumbbell', completed: 2, target: 3 },
+        { id: 'swim', name: 'Swim', icon: 'waves', completed: 1, target: 2 },
+        { id: 'learning', name: 'Learning', icon: 'cap', completed: 2, target: 3 },
+        { id: 'otto', name: 'Work on Otto', icon: 'monitor', completed: 1, target: 3 }
+      ]
+    };
+  }
+
+  toggleDaily(id) {
+    this.setState({
+      daily: this.state.daily.map(function (d) {
+        return d.id === id ? Object.assign({}, d, { done: !d.done }) : d;
+      })
+    });
+  }
+
+  bumpWeek(id) {
+    this.setState({
+      week: this.state.week.map(function (w) {
+        if (w.id !== id) return w;
+        var next = w.completed >= w.target ? 0 : w.completed + 1;
+        return Object.assign({}, w, { completed: next });
+      })
+    });
+  }
+
+  renderVals() {
+    var self = this;
+    var daily = this.state.daily;
+    var doneCount = daily.filter(function (d) { return d.done; }).length;
+    var left = daily.length - doneCount;
+    var ratio = daily.length === 0 ? 0 : doneCount / daily.length;
+
+    var todayBand = 0;
+    if (ratio >= 1) todayBand = 4;
+    else if (ratio >= 0.8) todayBand = 3;
+    else if (ratio >= 0.4) todayBand = 2;
+    else if (ratio > 0) todayBand = 1;
+
+    var past = [1, 2, 0, 1, 3, 2, 1, 1, 2, 3, 4, 3, 4];
+    var strip = past.map(function (b) {
+      return { bg: HEAT[b], ring: 'none' };
+    });
+    strip.push({ bg: HEAT[todayBand], ring: 'inset 0 0 0 1.5px #87AC91' });
+
+    return {
+      headline: left === 0 ? 'Done for today' : WORDS[left] + ' left today',
+      todayCount: doneCount + ' of ' + daily.length,
+      stripNote: left === 0 ? 'Today counted' : 'Today still open',
+
+      strip: strip,
+
+      daily: daily.map(function (d) {
+        return {
+          name: d.name,
+          icon: ICON[d.icon],
+          iconInk: d.done ? '#62836B' : '#878073',
+          ink: d.done ? '#878073' : '#F2EEE6',
+          note: d.note || '',
+          hasNote: !!d.note,
+          done: d.done,
+          notDone: !d.done,
+          tap: function () { self.toggleDaily(d.id); }
+        };
+      }),
+
+      week: this.state.week.map(function (w) {
+        var pips = [];
+        for (var i = 0; i < w.target; i++) {
+          pips.push({
+            bg: i < w.completed ? '#8FB39A' : '#23201B',
+            ring: i < w.completed ? 'none' : 'inset 0 0 0 1px #6B665C'
+          });
+        }
+        var met = w.completed >= w.target;
+        return {
+          name: w.name,
+          icon: ICON[w.icon],
+          iconInk: met ? '#62836B' : '#878073',
+          ink: met ? '#878073' : '#F2EEE6',
+          pips: pips,
+          count: w.completed + ' of ' + w.target,
+          countInk: met ? '#8FB39A' : '#9E988B',
+          tap: function () { self.bumpWeek(w.id); }
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
