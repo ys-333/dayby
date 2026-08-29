@@ -10,6 +10,8 @@ and nothing ships in the APK — the launcher icon is exported from these into
 status glyph at full size. Every other tracker's icon means "done"; this one
 means "half counts", which is the product's whole argument.
 
+### The chosen mark
+
 | File | Canvas | Use |
 |------|--------|-----|
 | `icon-partial.svg` | 320×320 | vector source — the mark on its own field |
@@ -18,9 +20,21 @@ means "half counts", which is the product's whole argument.
 | `png/icon-partial-512.png` | 512×512 | Play Store listing icon |
 | `png/icon-partial-1080.png` | 1080×1080 | upload-anywhere master; downsample rather than re-render |
 
+### The rejected candidates
+
+Kept because each still has a job, and because a rejected mark you can look at
+is worth more than a memory of one. All three exist as `.svg` plus PNGs at
+320 / 512 / 1080.
+
+| Mark | Why it lost | Where it is still used |
+|------|-------------|------------------------|
+| `mark-honest-grid` | Nine days, one skipped, one not yet. The dash and the outline cell carry the whole meaning and are the first things to vanish below ~40px, leaving a generic grid | *Why* highlight cover; carousel slide 1 motif |
+| `mark-return` | A broken ring with a dot re-entering — recovery, drawn. Nobody decodes it unaided, and it reads as a loading spinner | *Build* highlight cover; any post about recovery time |
+| `mark-d-bowl` | A `d` whose bowl is the ◐. The stem pushes the bowl off-centre, which crowds Android's adaptive mask, and it anchors the identity to *Dayby* rather than *Riyaz* | wordmark lockup — landing page footer, Play Store feature graphic |
+
 **Nothing outside this folder consumes the SVGs directly.** Social platforms and
-app stores take PNG only — Instagram rejects SVG uploads. Regenerate the PNGs
-with `sh docs/brand/render.sh` after any change to the mark.
+app stores take PNG only — Instagram rejects SVG uploads. Regenerate every PNG
+with `sh docs/brand/render.sh` after any change to a mark.
 
 ## Constants
 

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <title>Candidate C — return</title>
+  <rect width="320" height="320" fill="#3F6C51"/>
+  <circle cx="160" cy="160" r="96" fill="none" stroke="#F1F3EF" stroke-width="26"
+          stroke-linecap="round" stroke-dasharray="452 151"
+          transform="rotate(-64 160 160)"/>
+  <circle cx="160" cy="64" r="25" fill="#F1F3EF"/>
+</svg>
