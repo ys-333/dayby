@@ -643,6 +643,11 @@ Still open after the device pass, and better decided by eye than by argument:
 
 ## Remaining work
 
+**`docs/TODO.md` is the working list** — what is next, in dependency order,
+including the three decisions that are yours rather than Claude's. This section
+stays as the narrative; that file is the queue.
+
+
 ### Device checks and decisions — nothing here is code Claude can write
 
 - [ ] **Feel check:** create and track in under 10 seconds on a real phone
