@@ -216,6 +216,69 @@ void main() {
     });
   });
 
+  group('credited days', () {
+    test('a period reports which days its completions landed on', () {
+      final r = resolveWeekly(
+        from: d(2026, 8, 24),
+        to: d(2026, 8, 30),
+        events: [
+          event(d(2026, 8, 25)),
+          event(d(2026, 8, 27)),
+        ],
+      ).single;
+
+      expect(r.completed, 2);
+      expect(r.creditedDays, [d(2026, 8, 25), d(2026, 8, 27)]);
+    });
+
+    test('days are deduped and sorted, and can be fewer than completions', () {
+      // Two events on one day, one of them a count of two. Three completions,
+      // two days — the week grid marks days, the tally counts completions, and
+      // they are allowed to disagree.
+      final r = resolveWeekly(
+        from: d(2026, 8, 24),
+        to: d(2026, 8, 30),
+        events: [
+          event(d(2026, 8, 27), count: 2, id: 'a'),
+          event(d(2026, 8, 27), id: 'b'),
+          event(d(2026, 8, 25), id: 'c'),
+        ],
+      ).single;
+
+      expect(r.completed, 4);
+      expect(r.creditedDays, [d(2026, 8, 25), d(2026, 8, 27)]);
+    });
+
+    test('nothing recorded means no credited days', () {
+      final r = resolveWeekly(from: d(2026, 8, 24), to: d(2026, 8, 30)).single;
+      expect(r.creditedDays, isEmpty);
+    });
+
+    test('a partial does not credit a day', () {
+      // Only a completion marks a day. A partial is progress on the day, not
+      // one of the three the week asked for.
+      final r = resolveWeekly(
+        from: d(2026, 8, 24),
+        to: d(2026, 8, 30),
+        events: [event(d(2026, 8, 25), kind: TrackingKind.partial)],
+      ).single;
+
+      expect(r.status, OccurrenceStatus.pending);
+      expect(r.creditedDays, isEmpty);
+    });
+
+    test('a skipped day credits nothing', () {
+      final r = resolveDaily(
+        from: d(2026, 8, 26),
+        to: d(2026, 8, 26),
+        events: [event(d(2026, 8, 26), kind: TrackingKind.skipped)],
+      ).single;
+
+      expect(r.status, OccurrenceStatus.skipped);
+      expect(r.creditedDays, isEmpty);
+    });
+  });
+
   group('period occurrences', () {
     test('an open week behind target is pending, never missed', () {
       // Today is Friday Aug 28; the week Aug 24-30 is still open.

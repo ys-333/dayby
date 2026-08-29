@@ -15,8 +15,8 @@ the published page is a disposable copy.**
 |------|-------|--------|
 | `Tokens.dc.html` | Design system | **implemented** — `lib/app/theme/` |
 | `Main.dc.html` | Today | not implemented |
-| `Week.dc.html` | History / Week | not implemented |
-| `Insights.dc.html` | Insights (full scroll) | not implemented |
+| `Week.dc.html` | History / Week | **implemented** — period rows only |
+| `Insights.dc.html` | Insights (full scroll) | **partly** — the advice card |
 | `Detail.dc.html` | Commitment detail | not implemented |
 
 `canvas.json` holds the layout and, more importantly, the **annotations** — one
