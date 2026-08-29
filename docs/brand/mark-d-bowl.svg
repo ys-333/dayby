@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <title>Candidate D — d-bowl</title>
+  <rect width="320" height="320" fill="#3F6C51"/>
+  <path d="M142 116 A 78 78 0 0 0 142 272 Z" fill="#F1F3EF"/>
+  <circle cx="142" cy="194" r="78" fill="none" stroke="#F1F3EF" stroke-width="26"/>
+  <rect x="207" y="44" width="26" height="228" rx="4" fill="#F1F3EF"/>
+</svg>

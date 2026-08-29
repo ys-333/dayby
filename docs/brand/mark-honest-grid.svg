@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <title>Candidate B — honest grid</title>
+  <rect width="320" height="320" fill="#3F6C51"/>
+  <g fill="#F1F3EF">
+    <rect x="54"  y="54"  width="60" height="60" rx="14"/>
+    <rect x="130" y="54"  width="60" height="60" rx="14"/>
+    <rect x="206" y="54"  width="60" height="60" rx="14"/>
+    <rect x="54"  y="130" width="60" height="60" rx="14"/>
+    <rect x="130" y="150" width="60" height="20" rx="10"/>
+    <rect x="206" y="130" width="60" height="60" rx="14"/>
+    <rect x="54"  y="206" width="60" height="60" rx="14"/>
+    <rect x="130" y="206" width="60" height="60" rx="14"/>
+  </g>
+  <rect x="218" y="218" width="36" height="36" rx="8" fill="none" stroke="#F1F3EF" stroke-width="15"/>
+</svg>
