@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 
+import 'palette.dart';
+
 /// The colour each [OccurrenceStatus] wears, in one place.
 ///
 /// Statuses used to borrow Material's UI roles directly — missed took
@@ -10,13 +12,16 @@ import 'package:riyaz/domain/accounting/occurrence_status.dart';
 /// invalid. A tracker that greets you with a column of validation failures is
 /// the thing this app is trying not to be.
 ///
-/// So statuses get their own vocabulary. Nothing here changes what is on
-/// screen yet: every value is still wired from the [ColorScheme] it came from,
-/// which is what makes the extraction provably pixel-identical. What changes
-/// is that there is now a single place to change it.
+/// So statuses have their own vocabulary, drawn from [Palette] rather than
+/// from Material's roles. Done is sage, partial ochre, missed clay — and the
+/// three run down an evenly spaced lightness ladder in the direction they
+/// mean, done most prominent and missed quietest.
 ///
 /// Colour still never carries meaning alone — the shape and glyph in
-/// `StatusIndicator` do that, and this only tints them.
+/// `StatusIndicator` do that, and this only tints them. That is also what
+/// licenses hues this close together: the three clear ΔE 6 under every
+/// simulated colour vision, but it is the tick, the half-circle and the cross
+/// that a reader actually distinguishes.
 @immutable
 class StatusColors extends ThemeExtension<StatusColors> {
   const StatusColors({
@@ -31,22 +36,23 @@ class StatusColors extends ThemeExtension<StatusColors> {
     required this.muted,
   });
 
-  /// Wires every status to the role it wore before this layer existed.
-  ///
-  /// This factory is the whole no-visual-change guarantee: the extension is
-  /// built from the same scheme the call sites used to read, so the pixels are
-  /// identical by construction rather than by inspection.
-  factory StatusColors.from(ColorScheme scheme) => StatusColors(
-        done: scheme.primary,
-        onDone: scheme.onPrimary,
-        partial: scheme.tertiary,
-        missed: scheme.error,
-        skipped: scheme.outline,
-        paused: scheme.outline,
-        notScheduled: scheme.outline,
-        pending: scheme.outlineVariant,
-        muted: scheme.outline,
+  factory StatusColors.from(Palette p) => StatusColors(
+        done: p.sage,
+        onDone: p.ground,
+        partial: p.ochre,
+        missed: p.clay,
+        // Skipped and paused are both "this one is out of the reckoning", and
+        // they share the recessive neutral. What separates them is the glyph
+        // — a dash against a pause bar — not the colour.
+        skipped: p.ink3,
+        paused: p.ink3,
+        notScheduled: p.notScheduled,
+        pending: p.pendingRing,
+        muted: p.ink3,
       );
+
+  static StatusColors of(Brightness brightness) =>
+      StatusColors.from(Palette.of(brightness));
 
   /// Target met.
   final Color done;

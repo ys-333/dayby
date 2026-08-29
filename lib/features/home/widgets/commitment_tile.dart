@@ -44,7 +44,8 @@ class CommitmentTile extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(Radii.row),
-        child: Padding(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: Sizes.rowMinHeight),
           padding: const EdgeInsets.symmetric(
             horizontal: Insets.rowH,
             vertical: Insets.rowV,

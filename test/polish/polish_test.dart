@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/app/app.dart';
 import 'package:riyaz/app/shell.dart';
 import 'package:riyaz/domain/model/frequency.dart';
@@ -82,12 +83,7 @@ void main() {
         for (final entry in screens.entries) {
           await tester.pumpWidget(
             MaterialApp(
-              theme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(
-                  seedColor: const Color(0xFF3F6C51),
-                  brightness: brightness,
-                ),
-              ),
+              theme: riyazTheme(brightness),
               home: h.scope(entry.value),
             ),
           );
@@ -103,12 +99,7 @@ void main() {
       await seed();
       await tester.pumpWidget(
         MaterialApp(
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF3F6C51),
-              brightness: Brightness.dark,
-            ),
-          ),
+          theme: riyazTheme(Brightness.dark),
           home: h.scope(const HomeScreen()),
         ),
       );
