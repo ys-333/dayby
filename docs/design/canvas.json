@@ -1,0 +1,85 @@
+{
+  "artboards": [
+    {
+      "file": "Tokens.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 560,
+      "h": 1500,
+      "title": "Design system"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 680,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Today",
+      "is_interactive": true
+    },
+    {
+      "file": "Week.dc.html",
+      "x": 1150,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "History / Week"
+    },
+    {
+      "file": "Insights.dc.html",
+      "x": 1620,
+      "y": 0,
+      "w": 390,
+      "h": 940,
+      "title": "Insights (full scroll)"
+    },
+    {
+      "file": "Detail.dc.html",
+      "x": 2090,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Commitment detail"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "note-today",
+      "x": 680,
+      "y": -230,
+      "w": 390,
+      "text": "TODAY \u2014 tap the rows, it works.\n\nThe headline counts down to zero instead of scoring you. Weekly targets moved into their own group, because a 3x-a-week target cannot be late on a Tuesday and should not sit in a list of things that can. The greeting is gone; the FAB that covered a row is gone."
+    },
+    {
+      "id": "note-week",
+      "x": 1150,
+      "y": -230,
+      "w": 390,
+      "text": "HISTORY / WEEK \u2014 the broken grid, fixed.\n\nToday, period rows show a pill and no day cells, so rows do not line up with the M-T-W header and the grid looks like a rendering bug. Here every row keeps the same seven columns: a target row marks the days it was actually done, and carries its tally in the label instead of a floating pill."
+    },
+    {
+      "id": "note-detail",
+      "x": 2090,
+      "y": -230,
+      "w": 390,
+      "text": "COMMITMENT DETAIL \u2014 one number, then evidence.\n\nFifteen stats and thirty undated circles became a single lead figure, a dated twelve-week grid you can actually locate yourself in, and the three actions the screen was missing entirely: edit, pause, archive."
+    },
+    {
+      "id": "note-system",
+      "x": 0,
+      "y": -230,
+      "w": 560,
+      "text": "The app currently has no design system \u2014 two ColorScheme.fromSeed calls and stock Material 3 defaults. This sheet is the missing layer. The one change with teeth: status colours stop borrowing Material's error red, so a missed day reads as information rather than a validation failure."
+    },
+    {
+      "id": "note-insights",
+      "x": 1620,
+      "y": -230,
+      "w": 390,
+      "text": "INSIGHTS - same numbers, no alarm.\n\nThe load warning was full-bleed red, styled exactly like an error. It is advice, so it reads as advice. Momentum stays: recovery time is a headline metric. Shown at full scroll height rather than cropped to 844px - this screen scrolls on device.\n\nGenerated prose is gone. Every sentence left here describes current state; nothing claims a pattern across history without the insights engine's threshold gate."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

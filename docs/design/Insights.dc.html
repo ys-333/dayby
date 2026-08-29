@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #8FB39A; text-decoration: none; }
+    a:hover { color: #B4CDBB; }
+    .rz { font-family: system-ui, "Roboto", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+    .rz-ov { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #878073; }
+    .rz-tick { font-size: 10px; color: #827C6F; font-variant-numeric: tabular-nums; }
+    .rz-key { font-size: 11px; color: #9E988B; display: flex; align-items: center; gap: 5px; }
+  </style>
+</helmet>
+
+<div class="rz" style="width: 390px; height: 940px; background: #14120E; color: #F2EEE6; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; padding: 14px 16px 0 16px;">
+
+    <div style="font-family: Newsreader, Georgia, serif; font-size: 26px; line-height: 34px; font-weight: 400; padding: 0 4px;">Insights</div>
+
+    <div style="margin-top: 18px; padding: 0 4px; display: flex; flex-direction: column; gap: 10px;">
+      <div class="rz-ov">Consistency &middot; last 90 days</div>
+      <div style="display: flex; align-items: baseline; gap: 10px;">
+        <div style="font-size: 44px; line-height: 46px; font-weight: 600; letter-spacing: -0.025em;">45%</div>
+        <div style="font-size: 12px; line-height: 17px; color: #878073; text-wrap: pretty;">of 855 occurrences<br>that were yours to make</div>
+      </div>
+      <div style="display: flex; gap: 2px; height: 8px; margin-top: 2px;">
+        <div style="flex-grow: 40; background: #8FB39A; border-radius: 4px 0 0 4px;"></div>
+        <div style="flex-grow: 10; background: #C0A46B;"></div>
+        <div style="flex-grow: 50; background: #745C54; border-radius: 0 4px 4px 0;"></div>
+      </div>
+      <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+        <div class="rz-key"><span style="width: 8px; height: 8px; border-radius: 2px; background: #8FB39A;"></span>342 done</div>
+        <div class="rz-key"><span style="width: 8px; height: 8px; border-radius: 2px; background: #C0A46B;"></span>88 partial</div>
+        <div class="rz-key"><span style="width: 8px; height: 8px; border-radius: 2px; background: #745C54;"></span>425 missed</div>
+        <div class="rz-key" style="color: #878073;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #6B665C;"></span>48 skipped, not counted</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 22px; padding: 0 4px; display: flex; flex-direction: column; gap: 10px;">
+      <div class="rz-ov">Momentum</div>
+      <div style="display: flex; gap: 10px;">
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 22px; line-height: 26px; font-weight: 600;">2<span style="font-size: 13px; font-weight: 400; color: #878073;"> days</span></div>
+          <div style="font-size: 11px; color: #9E988B;">A typical run</div>
+        </div>
+        <div style="width: 1px; background: #221F1B;"></div>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 22px; line-height: 26px; font-weight: 600;">9<span style="font-size: 13px; font-weight: 400; color: #878073;"> days</span></div>
+          <div style="font-size: 11px; color: #9E988B;">Your best run</div>
+        </div>
+        <div style="width: 1px; background: #221F1B;"></div>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 22px; line-height: 26px; font-weight: 600;">3.2<span style="font-size: 13px; font-weight: 400; color: #878073;"> days</span></div>
+          <div style="font-size: 11px; color: #9E988B;">To come back</div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: #878073;">Currently on day 1.</div>
+    </div>
+
+    <div style="margin-top: 24px; padding: 0 4px; display: flex; flex-direction: column; gap: 8px;">
+      <div class="rz-ov">Worth noticing</div>
+
+      <div style="display: flex; gap: 12px; padding: 13px 14px; background: #1B1915; border-radius: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 2px;" aria-hidden="true"><path d="M12 3.5L21 8l-9 4.5L3 8zM3 12.5l9 4.5 9-4.5M3 16.8l9 4.5 9-4.5" fill="none" stroke="#9E988B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-family: Newsreader, Georgia, serif; font-size: 17px; line-height: 23px; color: #F2EEE6;">Eleven active daily commitments</div>
+          <div style="font-size: 12px; line-height: 18px; color: #9E988B;">That is a lot to hold at once. Consider trimming the list.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 13px 14px; background: #1B1915; border-radius: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 2px;" aria-hidden="true"><path d="M4.2 11.4a7.8 7.8 0 1 1 2.1 6.1" fill="none" stroke="#8FB39A" stroke-width="1.5" stroke-linecap="round"></path><path d="M3.6 6.6v4.9h4.9" fill="none" stroke="#8FB39A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-family: Newsreader, Georgia, serif; font-size: 17px; line-height: 23px; color: #F2EEE6;">You come back within 3.2 days</div>
+          <div style="font-size: 12px; line-height: 18px; color: #9E988B;">Recovering quickly matters more than never slipping.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 26px; padding: 0 4px; display: flex; flex-direction: column; gap: 8px;">
+      <div class="rz-ov">Rolling 7-day consistency</div>
+      <div style="display: flex; gap: 6px;">
+        <div style="width: 24px; display: flex; flex-direction: column; justify-content: space-between; padding: 2px 0; box-sizing: border-box; height: 78px;">
+          <div class="rz-tick">70%</div>
+          <div class="rz-tick">20%</div>
+        </div>
+        <svg width="328" height="78" viewBox="0 0 328 78" style="overflow: visible;" aria-hidden="true">
+          <line x1="0" y1="4" x2="328" y2="4" stroke="#221F1B" stroke-width="1"></line>
+          <line x1="0" y1="74" x2="328" y2="74" stroke="#221F1B" stroke-width="1"></line>
+          <line x1="0" y1="{{meanY}}" x2="328" y2="{{meanY}}" stroke="#6B665C" stroke-width="1"></line>
+          <path d="{{trendPath}}" fill="none" stroke="#8FB39A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          <circle cx="328" cy="{{lastY}}" r="4" fill="#8FB39A" stroke="#14120E" stroke-width="2"></circle>
+        </svg>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding-left: 30px;">
+        <div class="rz-tick">90 days ago</div>
+        <div style="font-size: 11px; color: #9E988B;">now &middot; <span style="color: #8FB39A; font-weight: 600;">41%</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; padding: 0 4px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <div class="rz-ov">By month</div>
+        <div style="font-size: 11px; color: #878073;">2026</div>
+      </div>
+      <svg width="358" height="72" viewBox="0 0 358 72" style="overflow: visible; margin-top: 2px;" aria-hidden="true">
+        <line x1="0" y1="66" x2="358" y2="66" stroke="#221F1B" stroke-width="1"></line>
+        <path d="{{monthPath}}" fill="none" stroke="#87AC91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        <sc-for list="{{monthDots}}" as="m" hint-placeholder-count="8">
+          <circle cx="{{m.x}}" cy="{{m.y}}" r="{{m.r}}" fill="{{m.fill}}" stroke="#14120E" stroke-width="2"></circle>
+        </sc-for>
+        <text x="46" y="{{febLabelY}}" fill="#9E988B" font-size="10" font-family="system-ui, sans-serif" text-anchor="middle">36%</text>
+        <text x="342" y="{{augLabelY}}" fill="#C6DECD" font-size="10" font-weight="600" font-family="system-ui, sans-serif" text-anchor="end">46%</text>
+      </svg>
+      <div style="display: flex; justify-content: space-between;">
+        <sc-for list="{{monthLabels}}" as="l" hint-placeholder-count="8">
+          <div class="rz-tick" style="width: 44px; text-align: center;">{{l}}</div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="height: 76px; flex-shrink: 0; border-top: 1px solid #26231E; display: flex; align-items: flex-start; padding-top: 10px; background: #14120E;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="#878073" stroke-width="1.5"></circle><path d="M8.4 12.2l2.5 2.4 4.7-5.2" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div style="font-size: 11px; color: #878073;">Today</div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15v13h-15zM4.5 10.5h15M8.5 4v4M15.5 4v4" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div style="font-size: 11px; color: #878073;">History</div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15.5l4.5-5 3.5 3 7-8.5" fill="none" stroke="#F2EEE6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 19.5h16" fill="none" stroke="#F2EEE6" stroke-width="1.6" stroke-linecap="round"></path></svg>
+      <div style="font-size: 11px; font-weight: 500; color: #F2EEE6;">Insights</div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="#878073" stroke-width="1.5"></circle><path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M18 6l-1.6 1.6M7.6 16.4L6 18M18 18l-1.6-1.6M7.6 7.6L6 6" fill="none" stroke="#878073" stroke-width="1.5" stroke-linecap="round"></path></svg>
+      <div style="font-size: 11px; color: #878073;">Settings</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // Rolling 7-day consistency, 90 days. Deterministic sample data standing in
+    // for the real series so the shape and scale are honest.
+    var series = [];
+    for (var i = 0; i < 46; i++) {
+      var v = 44
+        + 11 * Math.sin(i / 3.1)
+        + 6 * Math.sin(i / 1.35 + 1.2)
+        + 4 * Math.sin(i / 7.4 + 0.4);
+      series.push(Math.max(21, Math.min(69, v)));
+    }
+    series[45] = 41;
+
+    var W = 328, H = 78, TOP = 4, BOT = 74, LO = 20, HI = 70;
+    var y = function (v) { return BOT - ((v - LO) / (HI - LO)) * (BOT - TOP); };
+    var trendPath = series.map(function (v, i) {
+      return (i === 0 ? 'M' : 'L') + (i * (W / (series.length - 1))).toFixed(1) + ' ' + y(v).toFixed(1);
+    }).join(' ');
+
+    // By month, Jan-Aug. Line plot rather than bars: the values sit in a
+    // ten-point band, and a zero-baseline bar chart would render eight
+    // identical-looking blocks.
+    var months = [42, 36, 43, 41, 45, 44, 45, 46];
+    var MW = 358, MTOP = 8, MBOT = 60, MLO = 32, MHI = 50;
+    var my = function (v) { return MBOT - ((v - MLO) / (MHI - MLO)) * (MBOT - MTOP); };
+    var mx = function (i) { return 22 + i * ((MW - 44) / (months.length - 1)); };
+    var monthPath = months.map(function (v, i) {
+      return (i === 0 ? 'M' : 'L') + mx(i).toFixed(1) + ' ' + my(v).toFixed(1);
+    }).join(' ');
+
+    return {
+      trendPath: trendPath,
+      meanY: y(45).toFixed(1),
+      lastY: y(41).toFixed(1),
+
+      monthPath: monthPath,
+      monthDots: months.map(function (v, i) {
+        var last = i === months.length - 1;
+        var low = i === 1;
+        return {
+          x: mx(i).toFixed(1),
+          y: my(v).toFixed(1),
+          r: last ? 4 : (low ? 3.4 : 2.6),
+          fill: last ? '#AED4B8' : (low ? '#9E988B' : '#87AC91')
+        };
+      }),
+      febLabelY: (my(36) + 16).toFixed(1),
+      augLabelY: (my(46) - 9).toFixed(1),
+      monthLabels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']
+    };
+  }
+}
+</script>
+</body>
+</html>
