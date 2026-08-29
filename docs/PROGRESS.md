@@ -526,6 +526,45 @@ verified.
 Also added: the synthetic seeder is reachable from Settings in debug builds,
 behind a confirm — it replaces the database, so it asks first.
 
+### A token layer for status colour
+
+Statuses had been borrowing Material's UI roles: missed took `scheme.error`,
+partial took `scheme.tertiary`, skipped took `scheme.outline`. Those roles mean
+something else. `error` is the colour of a form field filled in wrong, and
+pointing it at a run you did not go on tells the user their morning was invalid
+— which is how a list of six commitments turns into a wall of alarm on the one
+screen the app most needs to feel unremarkable to open.
+
+`lib/app/theme/` now holds that vocabulary: `StatusColors` and `BandColors` as
+`ThemeExtension`s, plus the numeric tokens (`Insets`, `Radii`, `Sizes`) and the
+first two type roles. `StatusIndicator`, `CommitmentTile` and `CalendarCell`
+read from it instead of reaching into the scheme.
+
+**Nothing on screen changed, and that was the point.** Every token is still
+wired from the `ColorScheme` the widgets used to read — `missed: scheme.error`
+— so the pixels are identical by construction rather than by inspection. It is
+worth separating because the commit that *does* change the palette then becomes
+a diff of values in one directory, reviewable on its own, instead of a repaint
+tangled up with a refactor of every widget that mentions a colour.
+
+Logic verified: `flutter analyze` clean, `tool/check_arch.sh` clean, 276 tests
+pass (267 before, 9 new). Not feel verified — nothing to feel yet.
+
+- `test/app/theme/token_wiring_test.dart` pins each status and band to the role
+  it replaced, in both brightnesses. Checked non-vacuous: mis-wiring `missed`
+  to `tertiary` fails three of them.
+- It also covers a hole the widget tests cannot. They pump a bare `MaterialApp`
+  and so exercise the *fallback* in `RiyazThemeAccess`, never the extension the
+  real app registers, which means green tests would have survived the two
+  drifting apart — app and tests rendering different palettes, quietly, until
+  someone looked at a phone. The test asserts both paths resolve a status to
+  the same scheme role.
+
+Deliberately left alone, so the palette commit is the one that moves them:
+`onSurfaceVariant` at ~20 call sites, `TrendChart`'s line and grid, and the
+calendar's fixed 13px day numeral.
+
+
 ---
 
 ## Remaining work

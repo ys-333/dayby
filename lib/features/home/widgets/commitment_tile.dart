@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
+import 'package:riyaz/app/theme/tokens.dart';
+import 'package:riyaz/app/theme/type_roles.dart';
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 
 import '../today_view.dart';
@@ -40,9 +43,12 @@ class CommitmentTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(Radii.row),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.rowH,
+            vertical: Insets.rowV,
+          ),
           child: Row(
             children: [
               if (item.commitment.icon != null) ...[
@@ -50,7 +56,7 @@ class CommitmentTile extends StatelessWidget {
                   item.commitment.icon!,
                   style: const TextStyle(fontSize: 22),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: Insets.rowGap),
               ],
               Expanded(
                 child: Column(
@@ -58,22 +64,22 @@ class CommitmentTile extends StatelessWidget {
                   children: [
                     Text(
                       item.commitment.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.rowTitle?.copyWith(
                         decoration: muted ? TextDecoration.lineThrough : null,
-                        color: muted ? theme.colorScheme.outline : null,
+                        color: muted ? context.statusColors.muted : null,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: Insets.titleGap),
                     Text(
                       subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.rowMeta?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: Insets.rowTrailingGap),
               // A countable row that is not yet finished shows "+", because
               // its tap adds one rather than completing outright. The
               // affordance has to match what the tap actually does.
