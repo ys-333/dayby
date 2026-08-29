@@ -115,6 +115,41 @@ void main() {
       expect(find.textContaining('That is a lot to hold'), findsOneWidget);
     });
 
+    testWidgets('the load card is not dressed as an error', (tester) async {
+      for (var i = 0; i < 6; i++) {
+        await commitment(from: d(2026, 8, 1), name: 'Daily $i');
+      }
+      await h.pump(tester, const InsightsScreen());
+      await scrollToPatterns(tester);
+
+      final context = tester.element(find.byType(InsightsScreen));
+      final scheme = Theme.of(context).colorScheme;
+
+      // It used to take `errorContainer` and a warning triangle, which is the
+      // livery of a form filled in wrong. Having eleven daily commitments is
+      // something the user chose, and the app has an opinion about it, not a
+      // complaint.
+      final cards = tester.widgetList<Card>(find.byType(Card));
+      expect(cards, isNotEmpty);
+      for (final card in cards) {
+        expect(
+          card.color,
+          anyOf(isNull, isNot(scheme.errorContainer)),
+          reason: 'no insight card paints itself as an error',
+        );
+      }
+
+      expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
+      expect(find.byIcon(Icons.layers_rounded), findsOneWidget);
+
+      final icon = tester.widget<Icon>(
+        find.byIcon(Icons.layers_rounded),
+      );
+      expect(icon.color, scheme.onSurfaceVariant);
+      expect(icon.color, isNot(scheme.error));
+      expect(icon.color, isNot(scheme.onErrorContainer));
+    });
+
     testWidgets('stays quiet below the cap', (tester) async {
       for (var i = 0; i < 5; i++) {
         await commitment(from: d(2026, 8, 1), name: 'Daily $i');

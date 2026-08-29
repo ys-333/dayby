@@ -77,11 +77,16 @@ class AccountingEngine {
       );
     }
 
-    final completed = relevant
-        .where((e) => e.kind == TrackingKind.done)
-        .fold(0, (sum, e) => sum + e.count);
+    final done = relevant.where((e) => e.kind == TrackingKind.done);
+    final completed = done.fold(0, (sum, e) => sum + e.count);
     final attempted =
         completed > 0 || relevant.any((e) => e.kind == TrackingKind.partial);
+
+    // Which days the completions landed on, for display. Deduped because one
+    // day can carry several events, and sorted because the grid reads them
+    // left to right.
+    final creditedDays = done.map((e) => e.accountingDate).toSet().toList()
+      ..sort();
 
     if (completed >= occurrence.target) {
       return resolutionOf(
@@ -89,6 +94,7 @@ class AccountingEngine {
         status: OccurrenceStatus.done,
         completed: completed,
         weights: weights,
+        creditedDays: creditedDays,
         note: note,
       );
     }
@@ -103,6 +109,7 @@ class AccountingEngine {
         status: OccurrenceStatus.pending,
         completed: completed,
         weights: weights,
+        creditedDays: creditedDays,
         note: note,
       );
     }
@@ -112,6 +119,7 @@ class AccountingEngine {
       status: attempted ? OccurrenceStatus.partial : OccurrenceStatus.missed,
       completed: completed,
       weights: weights,
+      creditedDays: creditedDays,
       note: note,
     );
   }
