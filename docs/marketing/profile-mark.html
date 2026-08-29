@@ -1,0 +1,418 @@
+<title>Dayby Profile Mark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --paper:      #F1F3EF;
+    --paper-2:    #E7EBE5;
+    --card:       #FBFCFA;
+    --ink:        #171C18;
+    --ink-2:      #4A544D;
+    --ink-3:      #78837A;
+    --rule:       #D3DACF;
+    --rule-2:     #BCC6B8;
+    --brand:      #3F6C51;
+    --brand-soft: #E2ECE4;
+    --brand-ink:  #2C4C39;
+    --warn-bg:    #FBF1E6;
+    --warn-rule:  #E0BE92;
+    --warn-ink:   #7A4E19;
+    --shadow:     0 1px 2px rgba(23,28,24,.05), 0 8px 24px -16px rgba(23,28,24,.22);
+    /* mark constants — identical in both themes on purpose */
+    --mark-field: #3F6C51;
+    --mark-fig:   #F1F3EF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #121614; --paper-2: #171C19; --card: #1A201C;
+      --ink: #E8EDE8; --ink-2: #A9B4AB; --ink-3: #7C8880;
+      --rule: #2B332D; --rule-2: #3A443C;
+      --brand: #7FB693; --brand-soft: #1F2E24; --brand-ink: #A5CDB2;
+      --warn-bg: #241C11; --warn-rule: #5A431F; --warn-ink: #E0BE92;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #121614; --paper-2: #171C19; --card: #1A201C;
+    --ink: #E8EDE8; --ink-2: #A9B4AB; --ink-3: #7C8880;
+    --rule: #2B332D; --rule-2: #3A443C;
+    --brand: #7FB693; --brand-soft: #1F2E24; --brand-ink: #A5CDB2;
+    --warn-bg: #241C11; --warn-rule: #5A431F; --warn-ink: #E0BE92;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    margin: 0; text-wrap: balance; letter-spacing: -0.02em;
+  }
+  .eyebrow, .lbl, th, .spec, .verdict-tag, code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  p { margin: 0 0 15px; max-width: 64ch; }
+  ul { margin: 0 0 16px; padding-left: 20px; max-width: 64ch; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--rule-2); }
+  strong { font-weight: 600; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 46px 26px 110px; }
+
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 12px; }
+  .mast h1 { font-size: clamp(34px, 5.6vw, 50px); font-weight: 800; line-height: 1; letter-spacing: -0.035em; }
+  .mast p { font-size: 18px; color: var(--ink-2); margin: 13px 0 0; max-width: 56ch; }
+  .standfirst {
+    display: flex; flex-wrap: wrap; gap: 5px 20px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+    margin-bottom: 40px;
+  }
+
+  section { margin-top: 60px; }
+  h2 { font-size: 27px; font-weight: 700; margin-bottom: 6px; }
+  .dek { color: var(--ink-2); margin-bottom: 26px; max-width: 60ch; }
+
+  /* ---- candidate card ---- */
+  .cand {
+    border: 1px solid var(--rule);
+    background: var(--card);
+    box-shadow: var(--shadow);
+    margin-bottom: 30px;
+  }
+  .cand.win { border-color: var(--brand); border-width: 2px; }
+  .cand > .hd {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+    padding: 11px 18px; border-bottom: 1px solid var(--rule); background: var(--paper-2);
+  }
+  .cand.win > .hd { background: var(--brand-soft); }
+  .cand .lbl { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+  .cand .hd h3 { font-size: 19px; font-weight: 700; }
+  .verdict-tag {
+    font-size: 10px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--brand-ink); border: 1px solid var(--brand); padding: 2px 8px;
+  }
+
+  .cand .body { display: grid; grid-template-columns: 208px minmax(0,1fr); gap: 26px; padding: 22px 18px; }
+  @media (max-width: 700px) { .cand .body { grid-template-columns: 1fr; gap: 18px; } }
+
+  .avatar { border-radius: 50%; overflow: hidden; display: block; flex: none; background: var(--mark-field); }
+  .hero { width: 176px; height: 176px; }
+
+  .sizes { display: flex; align-items: flex-end; gap: 16px; margin-top: 16px; }
+  .sizecol { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sizecol .cap { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--ink-3); letter-spacing: .05em; }
+  .s96 { width: 64px; height: 64px; }
+  .s40 { width: 40px; height: 40px; }
+  .s24 { width: 24px; height: 24px; }
+
+  .rationale h4 { font-size: 12.5px; font-weight: 600; margin: 0 0 5px; letter-spacing: .02em; }
+  .rationale p { font-size: 15px; margin-bottom: 13px; }
+  .rationale .against { color: var(--ink-2); }
+  .rationale .against h4 { color: var(--warn-ink); }
+
+  /* ---- feed simulation ---- */
+  .feed {
+    border: 1px solid var(--rule); background: var(--card);
+    padding: 4px 0; margin: 18px 0 8px; max-width: 420px;
+  }
+  .feedrow { display: flex; align-items: center; gap: 11px; padding: 9px 14px; }
+  .feedrow + .feedrow { border-top: 1px solid var(--rule); }
+  .feedrow .who { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink); }
+  .feedrow .who small { display: block; color: var(--ink-3); font-size: 11px; }
+  .decoy { background: #8E9AA6; display: grid; place-items: center; color: #fff; font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 17px; }
+  .decoy.b { background: #B4574C; }
+  .decoy.c { background: #2E3440; }
+
+  /* ---- spec table ---- */
+  .tblwrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--card); margin: 18px 0 24px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 440px; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; background: var(--paper-2); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  code { font-size: 13px; background: var(--paper-2); padding: 1px 5px; }
+
+  .gate {
+    background: var(--warn-bg); border: 1px solid var(--warn-rule); border-left-width: 3px;
+    padding: 14px 18px; margin: 22px 0; font-size: 15.5px; color: var(--warn-ink); max-width: 64ch;
+  }
+  .gate p { margin: 0; max-width: none; }
+  .gate strong { color: var(--warn-ink); }
+  .gate .eyebrow { display: block; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; margin-bottom: 6px; }
+
+  .end {
+    margin-top: 70px; border-top: 2px solid var(--ink); padding-top: 16px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3);
+    display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<!-- master symbols: every rendering below is a <use> of these, so what you judge at 40px is the same geometry as 320px -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- A · Partial -->
+    <symbol id="mk-a" viewBox="0 0 320 320">
+      <rect width="320" height="320" fill="var(--mark-field)"/>
+      <path d="M160 62 A 98 98 0 0 0 160 258 Z" fill="var(--mark-fig)"/>
+      <circle cx="160" cy="160" r="98" fill="none" stroke="var(--mark-fig)" stroke-width="26"/>
+    </symbol>
+
+    <!-- B · Honest grid -->
+    <symbol id="mk-b" viewBox="0 0 320 320">
+      <rect width="320" height="320" fill="var(--mark-field)"/>
+      <g fill="var(--mark-fig)">
+        <rect x="54"  y="54"  width="60" height="60" rx="14"/>
+        <rect x="130" y="54"  width="60" height="60" rx="14"/>
+        <rect x="206" y="54"  width="60" height="60" rx="14"/>
+        <rect x="54"  y="130" width="60" height="60" rx="14"/>
+        <rect x="130" y="150" width="60" height="20" rx="10"/>
+        <rect x="206" y="130" width="60" height="60" rx="14"/>
+        <rect x="54"  y="206" width="60" height="60" rx="14"/>
+        <rect x="130" y="206" width="60" height="60" rx="14"/>
+      </g>
+      <rect x="218" y="218" width="36" height="36" rx="8" fill="none" stroke="var(--mark-fig)" stroke-width="15"/>
+    </symbol>
+
+    <!-- C · Return -->
+    <symbol id="mk-c" viewBox="0 0 320 320">
+      <rect width="320" height="320" fill="var(--mark-field)"/>
+      <circle cx="160" cy="160" r="96" fill="none" stroke="var(--mark-fig)" stroke-width="26"
+              stroke-linecap="round" stroke-dasharray="452 151"
+              transform="rotate(-64 160 160)"/>
+      <circle cx="160" cy="64" r="25" fill="var(--mark-fig)"/>
+    </symbol>
+
+    <!-- D · d-bowl -->
+    <symbol id="mk-d" viewBox="0 0 320 320">
+      <rect width="320" height="320" fill="var(--mark-field)"/>
+      <path d="M142 116 A 78 78 0 0 0 142 272 Z" fill="var(--mark-fig)"/>
+      <circle cx="142" cy="194" r="78" fill="none" stroke="var(--mark-fig)" stroke-width="26"/>
+      <rect x="207" y="44" width="26" height="228" rx="4" fill="var(--mark-fig)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+  <header class="mast">
+    <h1>Dayby Profile Mark</h1>
+    <p>Four candidate marks for @dayby, drawn to spec and tested at the size Instagram actually shows them.</p>
+  </header>
+  <div class="standfirst">
+    <span>Brand #3F6C51</span>
+    <span>Also becomes the launcher icon</span>
+    <span>Judge at 40px</span>
+  </div>
+
+  <section>
+    <h2>Before you pick</h2>
+    <p>Two constraints decide this, and neither is aesthetic.</p>
+    <p><strong>Instagram shows your avatar at about 40px</strong> in the feed and in comments — roughly a fingernail. The 176px version below is decoration; the 40px row is the actual test. Anything with fine detail, an outline-only form, or more than one idea in it dissolves there.</p>
+    <p><strong>Your app icon is still the default Flutter logo.</strong> So this isn't only a profile picture — it's the launcher icon, the Play Store icon, and the mark on every graphic you post. Pick once, use everywhere. That also means it must survive Android's adaptive-icon circle mask, which crops harder than Instagram does.</p>
+
+    <div class="gate">
+      <span class="eyebrow">What to avoid</span>
+      <p>The habit-app category is saturated with four marks: a <strong>checkmark</strong>, a <strong>flame</strong>, a <strong>leaf/sprout</strong>, and a <strong>calendar square</strong>. All four are taken, none is ownable, and a flame in particular signals exactly the streak culture you're arguing against. None of the candidates below uses one.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The candidates</h2>
+    <p class="dek">Same geometry rendered at four sizes. The 24px column is the comment-thread size — a mark that survives there survives anywhere.</p>
+
+    <!-- A -->
+    <article class="cand win">
+      <div class="hd">
+        <div>
+          <span class="lbl">Candidate A</span>
+          <h3>Partial</h3>
+        </div>
+        <span class="verdict-tag">Recommended</span>
+      </div>
+      <div class="body">
+        <div>
+          <svg class="avatar hero" viewBox="0 0 320 320" role="img" aria-label="Candidate A: a circle with its left half filled"><use href="#mk-a"/></svg>
+          <div class="sizes">
+            <div class="sizecol"><svg class="avatar s96" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-a"/></svg><span class="cap">64</span></div>
+            <div class="sizecol"><svg class="avatar s40" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-a"/></svg><span class="cap">40</span></div>
+            <div class="sizecol"><svg class="avatar s24" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-a"/></svg><span class="cap">24</span></div>
+          </div>
+        </div>
+        <div class="rationale">
+          <h4>What it is</h4>
+          <p>The ◐ glyph from your own status model — the symbol your app already draws for a partially-completed commitment, at full size.</p>
+          <h4>Why it wins</h4>
+          <p>It's the only candidate that <em>states the thesis</em>. Every other habit app's icon means "done"; yours means "half counts". That's the whole argument compressed into one shape, and it gives you a line for the launch post: <em>the icon is a half-finished day, on purpose.</em> It holds at 24px, it's a single unbroken form under the adaptive-icon mask, and it's already in your product's visual vocabulary.</p>
+          <div class="against">
+            <h4>The honest objection</h4>
+            <p>A half-filled circle is also a generic progress ring and a moon phase. It's distinctive in <em>this category</em>, not in the abstract. The tight crop and heavy stroke below are what pull it away from a stock progress indicator.</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- B -->
+    <article class="cand">
+      <div class="hd">
+        <div>
+          <span class="lbl">Candidate B</span>
+          <h3>Honest grid</h3>
+        </div>
+      </div>
+      <div class="body">
+        <div>
+          <svg class="avatar hero" viewBox="0 0 320 320" role="img" aria-label="Candidate B: a nine-cell grid, mostly filled, with one dash and one outline"><use href="#mk-b"/></svg>
+          <div class="sizes">
+            <div class="sizecol"><svg class="avatar s96" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-b"/></svg><span class="cap">64</span></div>
+            <div class="sizecol"><svg class="avatar s40" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-b"/></svg><span class="cap">40</span></div>
+            <div class="sizecol"><svg class="avatar s24" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-b"/></svg><span class="cap">24</span></div>
+          </div>
+        </div>
+        <div class="rationale">
+          <h4>What it is</h4>
+          <p>Nine days. Seven done, one skipped (the dash), one not yet (the outline). A week that isn't perfect and doesn't need to be.</p>
+          <h4>The case for it</h4>
+          <p>Conceptually the richest of the four and the most ownable — nobody else would ship an icon with a hole in it. It's also a direct crop of your History screen, so icon and product look like the same thing.</p>
+          <div class="against">
+            <h4>Why it doesn't win</h4>
+            <p>Look at the 24px column. The dash and the outline cell — the two elements carrying the entire meaning — are the first things to vanish, and what's left is a generic grid that reads as a menu button. A mark whose point disappears at the size it's mostly seen at has the point backwards. Excellent as a <strong>highlight cover</strong> and as a post graphic; wrong as an avatar.</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- C -->
+    <article class="cand">
+      <div class="hd">
+        <div>
+          <span class="lbl">Candidate C</span>
+          <h3>Return</h3>
+        </div>
+      </div>
+      <div class="body">
+        <div>
+          <svg class="avatar hero" viewBox="0 0 320 320" role="img" aria-label="Candidate C: a broken ring with a dot re-entering the gap"><use href="#mk-c"/></svg>
+          <div class="sizes">
+            <div class="sizecol"><svg class="avatar s96" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-c"/></svg><span class="cap">64</span></div>
+            <div class="sizecol"><svg class="avatar s40" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-c"/></svg><span class="cap">40</span></div>
+            <div class="sizecol"><svg class="avatar s24" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-c"/></svg><span class="cap">24</span></div>
+          </div>
+        </div>
+        <div class="rationale">
+          <h4>What it is</h4>
+          <p>A broken ring with a dot re-entering the gap. The streak breaks; you come back. Recovery time, drawn.</p>
+          <h4>The case for it</h4>
+          <p>The most sophisticated idea here and a perfect match for your headline metric. It looks like a real company's mark rather than an app sticker.</p>
+          <div class="against">
+            <h4>Why it doesn't win</h4>
+            <p>Nobody decodes it unaided. The gap reads as a design flourish, not a broken streak, and the dot reads as a decorative accent — you'd be explaining your logo forever. Symbols that need a caption are a luxury for brands people already recognise. Worth revisiting at 10,000 followers.</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- D -->
+    <article class="cand">
+      <div class="hd">
+        <div>
+          <span class="lbl">Candidate D</span>
+          <h3>d-bowl</h3>
+        </div>
+      </div>
+      <div class="body">
+        <div>
+          <svg class="avatar hero" viewBox="0 0 320 320" role="img" aria-label="Candidate D: a lowercase d whose bowl is half filled"><use href="#mk-d"/></svg>
+          <div class="sizes">
+            <div class="sizecol"><svg class="avatar s96" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-d"/></svg><span class="cap">64</span></div>
+            <div class="sizecol"><svg class="avatar s40" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-d"/></svg><span class="cap">40</span></div>
+            <div class="sizecol"><svg class="avatar s24" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-d"/></svg><span class="cap">24</span></div>
+          </div>
+        </div>
+        <div class="rationale">
+          <h4>What it is</h4>
+          <p>A lowercase <em>d</em> for Dayby whose bowl is the ◐ partial glyph. Letterform and symbol in one.</p>
+          <h4>The case for it</h4>
+          <p>Letterforms build name recall faster than abstract symbols, which matters at zero brand recognition. This one smuggles the thesis into the letter rather than sitting beside it.</p>
+          <div class="against">
+            <h4>Why it doesn't win</h4>
+            <p>Two problems. The stem forces the bowl off-centre, which fights the circle crop — under Android's adaptive mask the stem crowds the edge. And the app is <em>Riyaz</em> by Dayby; anchoring the permanent mark to the letter <em>d</em> bets the identity on the half of the name you've said is the container, not the product. Keep it as a wordmark lockup, not the avatar.</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <h2>The real test</h2>
+    <p class="dek">Candidate A against three plausible neighbours, at feed size. This is the only view that predicts whether anyone notices you.</p>
+    <div class="feed">
+      <div class="feedrow">
+        <div class="avatar s40 decoy">S</div>
+        <span class="who">streakly<small>liked your post</small></span>
+      </div>
+      <div class="feedrow">
+        <svg class="avatar s40" viewBox="0 0 320 320" aria-hidden="true"><use href="#mk-a"/></svg>
+        <span class="who">dayby<small>started following you</small></span>
+      </div>
+      <div class="feedrow">
+        <div class="avatar s40 decoy b">H</div>
+        <span class="who">habitforge<small>commented</small></span>
+      </div>
+      <div class="feedrow">
+        <div class="avatar s40 decoy c">◍</div>
+        <span class="who">dailygrind.app<small>liked your post</small></span>
+      </div>
+    </div>
+    <p>The green field does most of the work — it's the only non-neutral, non-red hue in the row, and the mark inside it is the only shape that isn't a letter. Contrast is why the field is solid brand green with a light figure rather than the reverse: a light avatar disappears into Instagram's white feed.</p>
+  </section>
+
+  <section>
+    <h2>Production spec</h2>
+    <p class="dek">If you take A, this is everything needed to ship it.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Where</th><th>Size</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Instagram avatar</td><td><code>320×320</code> PNG</td><td>Upload square; Instagram applies the circle crop itself</td></tr>
+          <tr><td>Android launcher</td><td><code>432×432</code> adaptive</td><td>Foreground layer needs a <b>66px safe inset</b> — the mask crops to a 264px circle</td></tr>
+          <tr><td>Play Store listing</td><td><code>512×512</code> PNG</td><td>32-bit, no alpha, no rounded corners — Google adds them</td></tr>
+          <tr><td>Field colour</td><td><code>#3F6C51</code></td><td>Your <code>ColorScheme</code> seed, unchanged</td></tr>
+          <tr><td>Figure colour</td><td><code>#F1F3EF</code></td><td>Not pure white — sits better on the green and matches the app's surface</td></tr>
+          <tr><td>Geometry</td><td>ring r=98, stroke 26</td><td>Left half solid. On a 320 canvas; scales linearly</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gate">
+      <span class="eyebrow">One decision for you</span>
+      <p>Generating the Android icon set from a single source normally uses <strong><code>flutter_launcher_icons</code></strong> — a dev dependency. Your CLAUDE.md says not to add a package without asking, so: <strong>yes or no?</strong> If no, the five <code>mipmap</code> PNGs can be exported by hand instead; it's slower but adds nothing to <code>pubspec.yaml</code>.</p>
+    </div>
+
+    <h3 style="font-size:15px;margin:32px 0 8px">Where the other three still earn their keep</h3>
+    <ul>
+      <li><strong>B — Honest grid:</strong> the <em>Why</em> highlight cover, and the recurring motif on carousel slide 1. It works everywhere it's bigger than a thumbnail.</li>
+      <li><strong>C — Return:</strong> the <em>Build</em> highlight cover, and the graphic for any post about recovery time.</li>
+      <li><strong>D — d-bowl:</strong> the wordmark lockup for the landing page footer and the Play Store feature graphic.</li>
+    </ul>
+    <p>Four marks from one system — same green, same 26-unit stroke, same figure colour — which is what makes a young account look established.</p>
+  </section>
+
+  <div class="end">
+    <span>Riyaz by Dayby</span>
+    <span>Candidate A · Partial</span>
+    <span>Judge it at 40px</span>
+  </div>
+</div>

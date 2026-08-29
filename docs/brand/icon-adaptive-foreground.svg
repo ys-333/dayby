@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <title>Riyaz by Dayby — adaptive-icon foreground layer</title>
+  <!-- Foreground only: no field. Android composites this over a #3F6C51
+       background layer and masks the result to a 264px circle, so the art is
+       scaled to 0.75 and centred to stay inside the safe zone. -->
+  <g transform="translate(216,216) scale(0.75) translate(-160,-160)">
+    <path d="M160 62 A 98 98 0 0 0 160 258 Z" fill="#F1F3EF"/>
+    <circle cx="160" cy="160" r="98" fill="none" stroke="#F1F3EF" stroke-width="26"/>
+  </g>
+</svg>
