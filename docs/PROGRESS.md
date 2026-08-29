@@ -665,14 +665,8 @@ The design-system board is built — it is the palette work above. The four scre
 boards are not, and they are ordinary implementation work, not device checks or
 decisions:
 
-- [ ] **Insights: the load warning reads as an error.**
-      `insights_screen.dart:175` paints it `colorScheme.errorContainer`. It is
-      advice, so it should read as advice. Smallest of the four.
-- [ ] **History: period rows break the week grid.** `week_grid.dart:205`
-      branches on `isPeriod` and draws a pill with no day cells, so those rows
-      do not line up with the M–T–W header and the grid reads as a rendering
-      bug. The board keeps seven columns on every row, marks the days a target
-      was actually met, and moves the tally into the label.
+- [x] **Insights: the load warning reads as an error** — `widget`. See below.
+- [x] **History: period rows break the week grid** — `unit`, `widget`. See below.
 - [ ] **Detail: three actions are missing entirely.** No edit, no pause, no
       archive anywhere in `commitment_detail_screen.dart`. The board also
       replaces the stat wall with one lead figure and a *dated* twelve-week
@@ -685,3 +679,50 @@ decisions:
 Also unbuilt, and it cuts across all four: **Newsreader is not bundled**, so
 every serif on every board renders in the device sans. See the type note in
 `docs/design/README.md`.
+
+### The week grid, and an insight that stopped shouting
+
+Two of the four boards, built. Logic verified: `flutter analyze` clean,
+`tool/check_arch.sh` clean, 297 tests pass (290 before, 7 new). **Not feel
+verified** — neither has been seen on a phone.
+
+**Period rows now keep the same seven columns as every other row.** They used
+to collapse into a single chip that spanned the grid at no particular column
+while the header above still read M T W T F S S, which is what made the table
+look broken.
+
+The original code's objection was recorded in its class doc and was right:
+drawing seven *status* cells for a 4x/week target would claim each day was
+expected, which is the misconception the whole period model exists to prevent.
+So a period row does not draw statuses. It draws a small dot on the days a
+completion actually landed — a record of where the week's work fell, carrying
+no claim that any of those days was owed. Two visibly different marks, and the
+new week legend names them apart: "Done" versus "Counted toward a target".
+
+- `ResolvedOccurrence.creditedDays` is the new domain field behind it: the days
+  inside a span that carried a completion, deduped and sorted. Display only —
+  `completed` remains the number that scores, and the two are allowed to
+  disagree, since one day can record a count above one. Five tests in
+  `accounting_engine_test.dart` cover it, including that a partial credits no
+  day and a skip credits nothing.
+- **Rollups are untouched by this.** The week grid reads live resolution rather
+  than the rollup table, and nothing here changes what a status resolves to, so
+  `_resolutionVersion` does not move.
+- The tally moved from a floating chip into the row label, tinted when the
+  target is met.
+
+**The load insight no longer wears `errorContainer` and a warning triangle.**
+Telling someone that eleven daily commitments is a lot, in the livery of a form
+they filled in wrong, is the wall-of-alarm problem in miniature — and `Insight`
+carries no valence field precisely so the UI cannot start issuing verdicts.
+Every card now takes the same surface; only recovery is tinted, being the one
+number this app is willing to be pleased about. The icon is stacked layers, not
+a hazard triangle.
+
+Both new tests were checked non-vacuous: restoring `errorContainer` fails the
+insights test, and crediting every day fails both week-grid tests.
+
+**Deliberately not done:** the board also gives *daily* rows a tally ("2 of 6").
+Its sample data counts skipped days in the denominator, which contradicts the
+rule that skipped is excluded entirely. That is a real accounting question, not
+a layout one, so it is left rather than guessed at.

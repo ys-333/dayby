@@ -1,5 +1,6 @@
 import '../analytics/scoring.dart';
 import '../recurrence/expected_occurrence.dart';
+import '../time/civil_date.dart';
 import 'occurrence_status.dart';
 
 /// An expected occurrence with the user's actual behaviour applied to it.
@@ -9,6 +10,7 @@ class ResolvedOccurrence {
     required this.status,
     required this.completed,
     required this.credit,
+    this.creditedDays = const [],
     this.note,
   });
 
@@ -21,6 +23,20 @@ class ResolvedOccurrence {
   /// Weighted credit toward consistency. Zero for anything not [done] or
   /// [partial]; excluded statuses contribute neither credit nor denominator.
   final double credit;
+
+  /// The days inside this occurrence's span that carried a completion,
+  /// ascending.
+  ///
+  /// Display only — nothing here feeds scoring, and [completed] remains the
+  /// number that counts. The two can legitimately disagree: a single day may
+  /// record a count above one, so three completions can land on two days.
+  ///
+  /// It exists for the week grid, which needs to mark *which* days a period
+  /// target was credited on without implying any of them was expected. A
+  /// [PeriodOccurrence] has no opinion about which days it is met on, and that
+  /// stays true — this reports where the completions actually fell, after the
+  /// fact.
+  final List<CivilDate> creditedDays;
 
   /// The most recent note recorded within this occurrence's span. Notes are
   /// optional context, never required, and never affect scoring.
@@ -45,6 +61,7 @@ ResolvedOccurrence resolutionOf({
   required OccurrenceStatus status,
   required int completed,
   required ScoringWeights weights,
+  List<CivilDate> creditedDays = const [],
   String? note,
 }) {
   final credit = switch (status) {
@@ -62,6 +79,7 @@ ResolvedOccurrence resolutionOf({
     status: status,
     completed: completed,
     credit: credit,
+    creditedDays: creditedDays,
     note: note,
   );
 }

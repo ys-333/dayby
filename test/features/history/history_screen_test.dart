@@ -155,8 +155,7 @@ void main() {
   });
 
   group('week grid', () {
-    testWidgets('daily rows show seven cells, period rows show one chip',
-        (tester) async {
+    testWidgets('every row keeps the same seven columns', (tester) async {
       await daily('Running');
       await h.repo.createCommitment(
         name: 'Gym',
@@ -172,8 +171,53 @@ void main() {
       expect(find.text('Aug 24 – Aug 30'), findsOneWidget);
       expect(find.text('Running'), findsOneWidget);
       expect(find.text('Gym'), findsOneWidget);
-      // The weekly commitment is one chip, not seven day cells.
-      expect(find.text('0 / 4 this week'), findsOneWidget);
+
+      // The period row is seven cells wide like every other row. It used to
+      // collapse into one chip, which left it spanning the grid at no
+      // particular column while the header above it still said M T W T F S S.
+      expect(find.text('0 / 4 this week'), findsNothing);
+      expect(find.text('0 of 4'), findsOneWidget);
+
+      // Seven cells on the Gym row: five elapsed days (Mon 24 - Fri 28, the
+      // frozen today) and two still to come.
+      expect(find.bySemanticsLabel('Nothing counted'), findsNWidgets(5));
+      expect(find.bySemanticsLabel('Not yet'), findsNWidgets(2));
+    });
+
+    testWidgets('a period row marks the days a completion landed on',
+        (tester) async {
+      final gym = await h.repo.createCommitment(
+        name: 'Gym',
+        frequency: const Frequency.timesPerWeek(target: 4),
+        startedOn: d(2026, 8, 1),
+        nowUtc: h.nowUtc,
+      );
+      // Two completions inside the visible week, on Tue and Thu.
+      for (final day in [25, 27]) {
+        await h.repo.record(
+          commitmentId: gym,
+          date: d(2026, 8, day),
+          kind: TrackingKind.done,
+          nowUtc: h.nowUtc,
+          label: 'done',
+        );
+      }
+      await h.pump(tester, const HistoryScreen());
+      await tester.tap(find.text('Week'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 of 4'), findsOneWidget);
+
+      // Two days carry the credited mark, the rest do not — and the label says
+      // "counted toward", never "done". A period is met over its target, and
+      // no day inside it was ever expected on its own.
+      expect(
+        find.bySemanticsLabel('Counted toward the target'),
+        findsNWidgets(2),
+        reason: 'Tue and Thu, the two days a completion actually landed on',
+      );
+      expect(find.bySemanticsLabel('Nothing counted'), findsNWidgets(3));
+      expect(find.bySemanticsLabel('Not yet'), findsNWidgets(2));
     });
 
     testWidgets('cannot page past the current week', (tester) async {
