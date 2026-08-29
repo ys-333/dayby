@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/formatting.dart';
 import 'package:riyaz/app/providers.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/insights/insight.dart';
@@ -160,6 +161,19 @@ class _NotEnoughData extends StatelessWidget {
   }
 }
 
+/// One observation, styled as an observation.
+///
+/// The load insight used to get [ColorScheme.errorContainer] and a warning
+/// triangle, which made "you have eleven daily commitments" arrive in the
+/// livery of a form you filled in wrong. It is advice — the user chose those
+/// eleven — and every other card on the screen is phrased descriptively for
+/// exactly the reason this one should be too. [Insight] carries no valence
+/// field on purpose; giving one kind an alarm treatment reintroduces the
+/// verdict the model went out of its way not to make.
+///
+/// So every card takes the same surface. Only the icon distinguishes them, and
+/// only recovery is tinted, because coming back quickly is the thing this app
+/// argues matters most and the one number it is willing to be pleased about.
 class _InsightCard extends StatelessWidget {
   const _InsightCard({required this.insight});
 
@@ -168,11 +182,9 @@ class _InsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isWarning = insight.kind == InsightKind.load;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: isWarning ? theme.colorScheme.errorContainer : null,
       child: ListTile(
         leading: Icon(
           switch (insight.kind) {
@@ -180,9 +192,13 @@ class _InsightCard extends StatelessWidget {
             InsightKind.recovery => Icons.replay_rounded,
             InsightKind.dayOfWeek => Icons.today_rounded,
             InsightKind.trend => Icons.show_chart_rounded,
-            InsightKind.load => Icons.warning_amber_rounded,
+            // Stacked layers, not a warning triangle: the observation is that
+            // a lot is stacked up, which is a quantity, not a hazard.
+            InsightKind.load => Icons.layers_rounded,
           },
-          color: isWarning ? theme.colorScheme.onErrorContainer : null,
+          color: insight.kind == InsightKind.recovery
+              ? context.statusColors.done
+              : theme.colorScheme.onSurfaceVariant,
         ),
         title: Text(insight.headline),
         subtitle: insight.detail == null ? null : Text(insight.detail!),
