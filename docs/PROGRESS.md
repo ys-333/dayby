@@ -299,6 +299,9 @@ Persistence landed here too — the engines had nothing to read from before.
       summary is unchanged, which an event-scanning implementation could not do.
 - [x] Rollup aggregation equals direct resolution, and rebuilds from scratch
       to the same numbers — `unit`
+- [x] Rollups are discarded when the *logic* that built them changes, not only
+      when data changes — `unit`. `rollup.logicVersion` stamps the resolution
+      contract; a mismatch throws the cache away. See the decision below.
 - [x] Schema v1 → v2 migration adds the rollup table without data loss — `build`
       (declared and compiles; not yet exercised by a migration test — Phase 10)
 
@@ -324,6 +327,18 @@ Persistence landed here too — the engines had nothing to read from before.
   from there. Backfilling last March costs a rebuild of March onward; ticking
   today costs almost nothing. Per-row tracking is more precise and much easier
   to get subtly wrong.
+- **A rollup carries the version of the logic that produced it.** The watermark
+  above answers "what data changed"; it cannot answer "what did *resolution*
+  change". A rollup is a cached `AccountingEngine.resolve()` result, valid only
+  while the rules that produced it hold. Found 2026-08-30: the period-skip fix
+  changed how a week resolves, and every stored rollup went on disagreeing with
+  the engine afterwards — invisible only because reseeding the test database
+  happened to rebuild them. `rollup.logicVersion` now stores a resolution
+  version plus the scoring weights; a mismatch discards the whole cache and
+  rebuilds. Weights are folded in automatically rather than left to the
+  constant alone, because `ScoringWeights` exists to be changed and requiring
+  whoever changes it to also remember a version bump is the kind of discipline
+  that fails silently.
 - **No charting package.** The trend is one polyline with a gap rule, drawn by
   a `CustomPainter`. Null points break the stroke rather than dropping to zero,
   so a window with nothing eligible reads as absent, not as collapse.

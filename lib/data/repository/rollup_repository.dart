@@ -17,6 +17,17 @@ class RollupRepository {
 
   static const String _staleKey = 'rollup.staleFrom';
   static const String _coveredKey = 'rollup.coveredTo';
+  static const String _versionKey = 'rollup.logicVersion';
+
+  /// Bump when resolution semantics change.
+  ///
+  /// The watermark tracks changed *data* and is blind to a changed *rule*. A
+  /// rollup is a cached `AccountingEngine.resolve()` result, so it is only
+  /// valid while the rules that produced it hold. Version 2 is the period-skip
+  /// fix: before it, one skipped day marked a whole week skipped, and every
+  /// rollup written under that rule went on contradicting the engine
+  /// afterwards with nothing to notice.
+  static const int _resolutionVersion = 2;
 
   final AppDatabase _db;
   final ResolutionService _resolution;
@@ -28,8 +39,45 @@ class RollupRepository {
     await _writeMarker(_staleKey, from);
   }
 
+  /// The contract these rollups were computed under.
+  ///
+  /// The weights are folded in rather than left to [_resolutionVersion] alone.
+  /// [ScoringWeights] exists to be changed, and requiring whoever changes it to
+  /// also remember a version bump is the kind of discipline that fails
+  /// silently — which is exactly the failure this whole marker guards against.
+  String get _logicVersion {
+    final weights = _resolution.accounting.weights;
+    return '$_resolutionVersion/${weights.done}/${weights.partial}';
+  }
+
+  /// Discards the cache when it was built under rules that no longer apply.
+  ///
+  /// Everything, not a date range: a rule change invalidates every row at once,
+  /// and there is no watermark that can express "all of it". Cheap, because a
+  /// rollup is derived — the canonical records are untouched and it rebuilds
+  /// from them on the next read.
+  Future<void> _discardIfLogicChanged() async {
+    final row = await (_db.select(_db.settings)
+          ..where((t) => t.key.equals(_versionKey)))
+        .getSingleOrNull();
+    final current = _logicVersion;
+    // A database written before this marker existed reports null, and its
+    // rollups came from unknown rules. Treat that as a mismatch.
+    if (row?.value == current) return;
+
+    await _db.transaction(() async {
+      await _db.delete(_db.occurrenceRollups).go();
+      await _clearMarker(_staleKey);
+      await _clearMarker(_coveredKey);
+      await _db.into(_db.settings).insertOnConflictUpdate(
+            SettingsCompanion.insert(key: _versionKey, value: current),
+          );
+    });
+  }
+
   /// Brings rollups up to date for [range], rebuilding only what is stale.
   Future<void> ensureFresh(CivilDateRange range) async {
+    await _discardIfLogicChanged();
     final stale = await _readMarker(_staleKey);
     final covered = await _readMarker(_coveredKey);
 
