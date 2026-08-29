@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
+import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 
 /// Renders a status with a distinct **shape and glyph**, never colour alone.
@@ -7,10 +9,15 @@ import 'package:riyaz/domain/accounting/occurrence_status.dart';
 /// colour-vision deficiency, and a tracker whose entire meaning is red-vs-green
 /// is unreadable to them — so done is a filled tick, missed is a cross, pending
 /// is an open ring, and each carries a semantic label for screen readers.
+///
+/// The glyph, the fill and the label are decided here because they are what
+/// the status *means*. The tint comes from `StatusColors` because that is what
+/// the status merely *looks like*, and the two want changing at different
+/// times.
 class StatusIndicator extends StatelessWidget {
   const StatusIndicator({
     required this.status,
-    this.size = 28,
+    this.size = Sizes.statusIndicator,
     super.key,
   });
 
@@ -19,50 +26,20 @@ class StatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (icon, filled, color, label) = switch (status) {
-      OccurrenceStatus.done => (
-          Icons.check_rounded,
-          true,
-          scheme.primary,
-          'Done',
-        ),
-      OccurrenceStatus.partial => (
-          Icons.contrast_rounded,
-          false,
-          scheme.tertiary,
-          'Partial',
-        ),
-      OccurrenceStatus.missed => (
-          Icons.close_rounded,
-          false,
-          scheme.error,
-          'Missed',
-        ),
-      OccurrenceStatus.skipped => (
-          Icons.remove_rounded,
-          false,
-          scheme.outline,
-          'Skipped',
-        ),
-      OccurrenceStatus.paused => (
-          Icons.pause_rounded,
-          false,
-          scheme.outline,
-          'Paused',
-        ),
+    final colors = context.statusColors;
+    final color = colors.forStatus(status);
+    final (icon, filled, label) = switch (status) {
+      OccurrenceStatus.done => (Icons.check_rounded, true, 'Done'),
+      OccurrenceStatus.partial => (Icons.contrast_rounded, false, 'Partial'),
+      OccurrenceStatus.missed => (Icons.close_rounded, false, 'Missed'),
+      OccurrenceStatus.skipped => (Icons.remove_rounded, false, 'Skipped'),
+      OccurrenceStatus.paused => (Icons.pause_rounded, false, 'Paused'),
       OccurrenceStatus.notScheduled => (
           Icons.remove_rounded,
           false,
-          scheme.outline,
           'Not scheduled',
         ),
-      OccurrenceStatus.pending => (
-          null,
-          false,
-          scheme.outlineVariant,
-          'Not done yet',
-        ),
+      OccurrenceStatus.pending => (null, false, 'Not done yet'),
     };
 
     return Semantics(
@@ -82,8 +59,8 @@ class StatusIndicator extends StatelessWidget {
             ? null
             : Icon(
                 icon,
-                size: size * 0.62,
-                color: filled ? scheme.onPrimary : color,
+                size: size * Sizes.indicatorGlyphRatio,
+                color: filled ? colors.onDone : color,
               ),
       ),
     );

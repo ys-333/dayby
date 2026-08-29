@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'router.dart';
+import 'theme/riyaz_theme.dart';
 
 class RiyazApp extends StatelessWidget {
   const RiyazApp({super.key});
@@ -11,15 +12,8 @@ class RiyazApp extends StatelessWidget {
       title: 'Riyaz',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3F6C51)),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3F6C51),
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: riyazTheme(Brightness.light),
+      darkTheme: riyazTheme(Brightness.dark),
       routerConfig: router,
     );
   }
