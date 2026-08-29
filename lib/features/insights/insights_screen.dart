@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/formatting.dart';
 import 'package:riyaz/app/providers.dart';
+import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/insights/insight.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
@@ -80,7 +81,11 @@ class _Body extends ConsumerWidget {
         TrendChart(points: data.trend),
         const SizedBox(height: 24),
         const _Section('Momentum'),
+        // Spaced, because four equal columns with no gutter let a long label
+        // run straight into the next one: "Current streak" and "Longest"
+        // rendered as a single word on a real phone.
         Row(
+          spacing: Insets.rowTrailingGap,
           children: [
             _Stat('Current streak', '${data.streaks.current}'),
             _Stat('Longest', '${data.streaks.longest}'),
