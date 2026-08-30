@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 374 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 383 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 374 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 383 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -672,10 +672,10 @@ decisions:
 
 - [x] **Insights: the load warning reads as an error** — `widget`. See below.
 - [x] **History: period rows break the week grid** — `unit`, `widget`. See below.
-- [~] **Detail: three actions are missing entirely.** All three are now built
-      — archive and unarchive, edit, and pause and resume (below). What is
-      left of this board is layout: the stat wall becomes one lead figure and
-      a *dated* twelve-week grid.
+- [x] **Detail: three actions and the layout** — `unit`, `widget`,
+      `migration`. Archive and unarchive, edit, pause and resume, and the stat
+      wall replaced by one lead figure and a dated twelve-week grid. See
+      below.
 - [x] **Today: the structure the device pass complained about** — `unit`,
       `widget`. All three findings answered. See below.
 
@@ -1004,3 +1004,63 @@ either, so this is a fix rather than a regression avoided. And the edit sheet
 had to become scrollable with the picker collapsed by default: twenty-eight
 swatches open by default pushed Save off a short screen, which the existing
 frequency test caught immediately.
+
+### The detail screen stops being a wall of numbers
+
+The last of the four screen boards. Logic verified: 383 tests pass (374
+before, 9 new). **Not feel verified.**
+
+**Fifteen figures at one weight is not information, it is a wall.** The screen
+now opens with the one number the user came for — this month's consistency, at
+display size — and the line under it states the denominator: "Of 29 scheduled
+days this month". A percentage with no stated base is a number nobody can argue
+with or learn from. With nothing settled it reads an em dash and "Nothing has
+settled this month yet", never 0%: a month still being lived has no
+consistency, and drawing that as zero is a verdict delivered early — the same
+rule the Today headline follows.
+
+**The thirty undated circles were the real loss.** They showed a *sequence* —
+this, then this, then this — with nothing to hang it on, so a gap could not be
+placed in a week or a month and therefore could not be learned from. The
+twelve-week grid answers the question that strip was really being asked: *when
+do I drop this?*
+
+Two things in it are load-bearing:
+
+- It is anchored to a **week start**, not to "today minus 83". Off by even a
+  day and each row of the grid holds a different weekday, which destroys the
+  one pattern the grid exists to show. A test pins `gridStart.weekday == 1`.
+- A **period** commitment's grid marks only where completions landed, never a
+  per-day status, and its legend reads "Counted toward a target" rather than
+  "Done". Same two shapes and the same wording as the week grid on History,
+  and for the same reason: a 4×/week target has no opinion about which days it
+  is met on, so painting one "done" would claim that day was owed. The test
+  asserts every grid day's status is null for such a commitment.
+
+Every mark is a shape before it is a colour — solid, half-filled, bare ring,
+dot, faint block — so the grid still reads with no colour vision at all. Future
+cells are checked *before* status, so a pending occurrence in the current week
+cannot borrow a failure's shape. All eighty-four cells carry a dated semantic
+label, because this grid is the only place on the screen that says what
+happened on a *particular* day.
+
+**The latest note is quoted at the foot.** The user's own words about their own
+week are worth more than another figure, and until now the only way to see one
+was to long-press the row it belonged to and open a dialog.
+
+**Four geometry tests now cover this screen**, at 320dp, 1.8× text scale, both
+at once, and landscape — scrolling the whole thing each time, since the grid
+sizes its cells to the width it is handed and an overflow only appears once it
+is on screen. This screen is reached by a push, so it was never in the polish
+suite's list of four tab screens; that gap is how an overflowing grid could
+have shipped without a single test noticing. One bug turned up immediately: the
+note's rule needed `IntrinsicHeight`, because a stretched `Row` inside a
+`ListView` asks for infinite height.
+
+**One thing not taken from the board.** Its subtitle reads "Every day · since
+12 December 2025", and the frequency half is missing here. `ResolvedHistory`
+carries no schedules, and widening a type shared by history, analytics and
+insights so one subtitle could name a frequency would make three screens pay
+for a label only this one shows. What is there instead is what can be said
+truthfully from the occurrences already resolved: the period for a period
+target, and the start date always.

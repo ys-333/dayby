@@ -33,15 +33,11 @@ decided and why, because each one closed off an alternative.
 
 ---
 
-## 1. Commitment detail — the only board whose gap is missing *function*
+## 1. Commitment detail — done
 
-The screen has no edit, no pause, no archive. A user who abandons a commitment
-has no way out of a list that only grows.
-
-The data layer is further along than it looks:
-`TrackingRepository.pauseCommitment()` (`:292`) and `.setState()` (`:306`)
-already exist and have **zero callers**. The engines already honour both —
-`resolution.dart:86`, `today_controller.dart:45`, `week_grid.dart:78`.
+All three missing actions and the layout. The screen had no edit, no pause and
+no archive: a user who abandoned a commitment had no way out of a list that
+only grows.
 
 - [x] **Archive and unarchive** — `unit`, `widget`. Overflow menu, undo, and a
       banner that says history is kept. Archiving **closes the schedule** at
@@ -80,9 +76,27 @@ already exist and have **zero callers**. The engines already honour both —
       itself: a schedule already beginning on or after the change date **must**
       be amended, because closing it the day before would leave a version
       whose end precedes its start. Not a taste call after all.
-- [ ] **The board's layout.** Fifteen stats and thirty undated circles become
-      one lead figure and a *dated* twelve-week grid. Cosmetic; do it after
-      the three actions work.
+- [x] **The board's layout** — `widget`. Fifteen equal-weight stats and thirty
+      undated circles become one lead figure, a dated twelve-week grid, three
+      momentum figures, four small windows and the latest note.
+      The circles were the real loss: they showed a *sequence* with nothing to
+      hang it on, so a gap could not be placed in a week or a month and could
+      not be learned from. The grid is anchored to a **week start**, not to
+      "today minus 83" — otherwise each row holds a different weekday and the
+      one pattern it exists to show is destroyed.
+      A **period** commitment's grid marks only where completions landed, never
+      a per-day status, and its legend says "Counted toward a target" — the
+      same two shapes and the same wording as the week grid, because a
+      4×/week target has no opinion about which days it is met on.
+      The lead figure states its own denominator ("Of 29 scheduled days this
+      month"): a percentage with no stated base cannot be argued with. It shows
+      an em dash and "Nothing has settled this month yet" rather than 0%.
+      Four geometry tests now cover this screen at 320dp, 1.8× and landscape,
+      scrolling the whole thing — it is reached by a push, so it was never in
+      the polish suite's list of screens, which is how an overflowing grid
+      could have shipped unnoticed. One was found that way: the note's rule
+      needed `IntrinsicHeight`, since a stretched `Row` in a `ListView` asks
+      for infinite height.
 
 ## 2. The icon migration — done
 
