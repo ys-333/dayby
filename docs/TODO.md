@@ -157,16 +157,36 @@ vocabulary swap is a change to one file.
 
 ## 4. Close-out
 
-- [ ] **Rollup logic version.** Fold `timezoneName`, `dayBoundaryHour` and
-      `weekStartsOn` into `_logicVersion` (`rollup_repository.dart:48`).
-      **Latent, not live** — `appSettings` is a hardcoded constant with no
-      runtime source, so nothing can change these today. One line, as
-      insurance for the day the timezone becomes device-derived.
+- [x] **Rollup logic version** — `unit`. All three calendar settings are now
+      in `_logicVersion`, read off the resolution service's own calendar rather
+      than by injecting `AppSettings`. They are the ones with teeth: a rollup
+      caches "what happened on this date", and each of them changes what a date
+      *is* — move the boundary and every late-night completion shifts a day,
+      change the zone and the same instants land elsewhere, change the week
+      start and every weekly target is scored over a different seven days.
+      Not one stored row moves in any of those cases, so the staleness
+      watermark sees nothing. Three tests, and dropping the change fails
+      exactly those three. Still latent: `appSettings` is a hardcoded constant.
+- [x] The raw `scheme.*` call sites — **decided, not renamed.** All 38 already
+      resolve to the right palette value; 34 are `onSurfaceVariant`, which is
+      Material's role for de-emphasised text and is exactly the question a
+      caption is asking. Rewriting them as `palette.ink2` swaps a semantic role
+      for a palette index and reads worse. `StatusColors` and `BandColors`
+      exist because Material has no role for "a missed day"; it does have one
+      for quiet text.
+      What was actually missing was any **guard on the mapping** — 34 widgets
+      trusted `onSurfaceVariant` to be `ink2` and nothing said so, so one line
+      in `riyazTheme` could have re-tinted every caption with no test failing.
+      `theme_contract_test.dart` pins every role the app leans on, in both
+      brightnesses, including that **nothing anywhere reads as red** —
+      `ColorScheme.fromSeed` supplies a real red for `error` unless overridden.
+      Two call sites did move: `TrendChart`'s line and grid. A plotted series
+      is a graphic, not a button, and `scheme.primary` would re-tint the chart
+      the day the button changed.
 - [ ] Period-close review UI — what the user sees when a week ends. Designed
-      away rather than built; there is no moment-of-closure summary.
-- [ ] The remaining raw `scheme.*` call sites (~20 `onSurfaceVariant`, plus
-      `TrendChart`'s line and grid). Low priority — they resolve correctly
-      today. The legend bug is the argument for eventually finishing.
+      away rather than built; there is no moment-of-closure summary. **Left
+      deliberately:** it is a new product surface rather than a fix, and no
+      board describes it.
 
 ---
 
