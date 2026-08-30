@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 404 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 409 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 404 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 409 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1179,3 +1179,58 @@ distinguish *this* day from *that* one; here they only have to see a shape.
 The test asserts every cell is a ramp **fill**, that only today carries a
 border, and that clay appears nowhere in the strip. Putting the clay ring back
 fails it with `cell 0 has no fill`.
+
+### Insights, measured against its board
+
+A sanity check of the shipped screen against `Insights.dc.html` found six
+differences. Four of them were **product rules rather than taste**, and those
+are now closed. 409 tests pass (404 before, 5 new). **Not feel verified.**
+
+**The current streak was the headline, and it may not be.** `CLAUDE.md` is
+explicit — *"Streaks are shown but are deliberately not the headline metric —
+long-run consistency and recovery time are"* — and the screen led Momentum with
+`Current streak` as its largest number. That is the ordinary habit-tracker
+failure in miniature: a counter whose only direction is back to zero, taking
+the user's motivation with it when it goes. It is a sentence now,
+*"Currently on day 2."*, under the three figures that actually describe how
+someone practises. A test asserts the label appears nowhere.
+
+The three that remain are worded exactly as the commitment detail screen words
+them — `A typical run`, `Your best run`, `To come back`. The two screens report
+the same numbers and had been calling them different things.
+
+**The lead percentage stated no denominator.** Now *"Of 874 occurrences that
+were yours to make"*, which is the same shape as the detail screen's lead
+figure and the same argument: a percentage with no stated base cannot be argued
+with or learned from, and this base is one most people would guess wrong, since
+skips, pauses, unscheduled days and everything pending are already out of it.
+
+**Skipped read as a fourth outcome.** It sat beside Done, Partial and Missed in
+identical weight, inviting exactly the reading the accounting model exists to
+prevent. It is recessive now and captioned `Skipped, not counted` — in words,
+because the point is arithmetic rather than status and colour could not carry
+it anyway.
+
+**The trend chart had no scale.** A line between two bare rules: you could see
+the shape and not read one value off it. It now has axis labels, a dashed mean,
+a dot on the last *known* point — not simply the last point, since a series can
+legitimately end in a gap — and `Last 90 days … now · 39%`.
+
+**The axis is fixed at 0–100%, and the board's is not.** The board ticks 70%
+and 20%, fitted to its data. Fitting is the standard way to make a flat series
+look interesting and it is precisely wrong here: it turns a five-point wobble
+into a cliff, and a tracker that draws ordinary variation as a collapse is the
+guilt machine this app is trying not to be. Recorded in `TrendChart`'s doc so
+the departure is a decision rather than an oversight.
+
+Two differences were left alone as taste: **by month stays bars** rather than
+the board's line-with-dots, which reads better at phone width, and the stacked
+proportion bar under the percentage was not added — the four counts carry the
+same information and the row now says which of them is excluded.
+
+**One bug introduced and caught in the same session.** The new axis gutter was
+a fixed 36dp, so at 1.8× text scale "100%" wrapped onto three lines and
+overflowed the chart box by 114px. The commitment-detail geometry tests — added
+only last session, precisely because that screen had never been covered —
+failed immediately. Gutter and chart height both follow
+`MediaQuery.textScalerOf` now.

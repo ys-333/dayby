@@ -67,14 +67,34 @@ class _Body extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: Insets.titleGap * 2),
+        // The denominator, said out loud. A percentage with no stated base is
+        // a number the reader can neither argue with nor learn from — and this
+        // one has a base most people would guess wrong, because skips, pauses,
+        // unscheduled days and anything still pending are all already out of
+        // it. "Yours to make" is the whole claim in three words.
+        Text(
+          data.last90.eligible == 0
+              ? 'Nothing has settled in the last 90 days yet'
+              : 'Of ${data.last90.eligible} occurrences that were yours '
+                  'to make',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: Insets.rowTrailingGap),
         Wrap(
           spacing: 20,
+          runSpacing: Insets.rowTrailingGap,
           children: [
             _Count('Done', data.last90.done),
             _Count('Partial', data.last90.partial),
             _Count('Missed', data.last90.missed),
-            _Count('Skipped', data.last90.skipped),
+            // Dimmed and captioned, because it is not a fourth outcome. A skip
+            // is a decision the user made and it leaves the denominator
+            // entirely — rendering it in the same weight as Missed invites
+            // exactly the reading the accounting model exists to prevent.
+            _Count('Skipped', data.last90.skipped, excluded: true),
           ],
         ),
         const SizedBox(height: 24),
@@ -82,27 +102,55 @@ class _Body extends ConsumerWidget {
         TrendChart(points: data.trend),
         const SizedBox(height: 24),
         const _Section('Momentum'),
-        // Spaced, because four equal columns with no gutter let a long label
-        // run straight into the next one: "Current streak" and "Longest"
-        // rendered as a single word on a real phone.
+        // **The current streak is not here, and that is the point.**
+        // `CLAUDE.md`: "Streaks are shown but are deliberately not the
+        // headline metric — long-run consistency and recovery time are." It
+        // used to lead this row as the largest number on the screen, which is
+        // the ordinary habit-tracker failure: a counter that only ever goes to
+        // zero, and takes the user's motivation with it. It is a footnote now,
+        // in a sentence, below the three figures that actually describe how
+        // someone practises.
+        //
+        // Wording matches the commitment detail screen exactly. The two
+        // screens report the same three numbers and used to call them
+        // different things.
         Row(
           spacing: Insets.rowTrailingGap,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Stat('Current streak', '${data.streaks.current}'),
-            _Stat('Longest', '${data.streaks.longest}'),
             _Stat(
-              'Avg run',
+              'A typical run',
               data.streaks.averageStreak == 0
                   ? '—'
                   : data.streaks.averageStreak.toStringAsFixed(1),
+              unit: data.streaks.averageStreak == 0 ? null : 'days',
             ),
+            const _Rule(),
             _Stat(
-              'Avg recovery',
+              'Your best run',
+              '${data.streaks.longest}',
+              unit: data.streaks.longest == 1 ? 'day' : 'days',
+            ),
+            const _Rule(),
+            _Stat(
+              'To come back',
               data.streaks.averageRecoveryDays == null
                   ? '—'
                   : data.streaks.averageRecoveryDays!.toStringAsFixed(1),
+              unit: data.streaks.averageRecoveryDays == null ? null : 'days',
             ),
           ],
+        ),
+        const SizedBox(height: Insets.rowTrailingGap),
+        Text(
+          switch (data.streaks.current) {
+            0 => 'Not on a run right now.',
+            1 => 'Currently on day 1.',
+            final n => 'Currently on day $n.',
+          },
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 24),
         _Section('${today.year}'),
@@ -289,14 +337,19 @@ class _Section extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value);
+  const _Stat(this.label, this.value, {this.unit});
 
   final String label;
   final String value;
 
+  /// "days". Null when the figure is an em dash, because "— days" is worse
+  /// than "—".
+  final String? unit;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,11 +359,14 @@ class _Stat extends StatelessWidget {
             style: theme.textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
+          if (unit != null)
+            Text(unit!, style: theme.textTheme.labelSmall?.copyWith(
+              color: muted,
+            )),
+          const SizedBox(height: Insets.titleGap),
           Text(
             label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(color: muted),
           ),
         ],
       ),
@@ -318,26 +374,60 @@ class _Stat extends StatelessWidget {
   }
 }
 
+/// The hairline between two momentum figures.
+///
+/// They are three separate answers, not one row of numbers, and without a rule
+/// between them the eye reads "2.0 9 3.2" as a sequence.
+class _Rule extends StatelessWidget {
+  const _Rule();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 34,
+        margin: const EdgeInsets.only(top: Insets.titleGap * 2),
+        color: context.palette.line,
+      );
+}
+
 class _Count extends StatelessWidget {
-  const _Count(this.label, this.value);
+  const _Count(this.label, this.value, {this.excluded = false});
 
   final String label;
   final int value;
 
+  /// True for a tally that sits **outside** the score rather than inside it.
+  ///
+  /// It is recessive and it says so in words. Colour alone would not do the
+  /// job here — that is the app's standing rule — and in any case the thing
+  /// being communicated is not a status but a piece of arithmetic: this number
+  /// was never in the denominator.
+  final bool excluded;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$value', style: theme.textTheme.titleMedium),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Semantics(
+      label: excluded
+          ? '$value $label, not counted toward consistency'
+          : '$value $label',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$value',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: excluded ? muted : null,
+            ),
           ),
-        ),
-      ],
+          Text(
+            excluded ? '$label, not counted' : label,
+            style: theme.textTheme.labelSmall?.copyWith(color: muted),
+          ),
+        ],
+      ),
     );
   }
 }

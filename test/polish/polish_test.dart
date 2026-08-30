@@ -65,6 +65,9 @@ void main() {
       expect(find.text('Nothing to track yet.'), findsOneWidget);
 
       await h.pump(tester, const InsightsScreen());
+      // Patterns is the last section, and a ListView builds only what shows.
+      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      await tester.pumpAndSettle();
       expect(find.text('Not enough data yet'), findsOneWidget);
     });
 

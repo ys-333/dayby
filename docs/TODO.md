@@ -190,6 +190,14 @@ vocabulary swap is a change to one file.
       Two call sites did move: `TrendChart`'s line and grid. A plotted series
       is a graphic, not a button, and `scheme.primary` would re-tint the chart
       the day the button changed.
+- [x] **Insights against its board** — `widget`. Six differences found, four
+      of them product rules and all four closed: the current streak was the
+      headline metric that `CLAUDE.md` says it must not be; the lead
+      percentage stated no denominator; Skipped read as a fourth outcome
+      rather than a tally outside the score; and the trend chart had no scale.
+      Two left as taste — by month stays bars, and the trend axis is fixed at
+      0–100% rather than fitted as the board draws it, because fitting turns
+      an ordinary wobble into a cliff.
 - [ ] Period-close review UI — what the user sees when a week ends. Designed
       away rather than built; there is no moment-of-closure summary. **Left
       deliberately:** it is a new product surface rather than a fix, and no

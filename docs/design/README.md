@@ -16,7 +16,7 @@ the published page is a disposable copy.**
 | `Tokens.dc.html` | Design system | **implemented** — `lib/app/theme/` |
 | `Main.dc.html` | Today | **implemented** |
 | `Week.dc.html` | History / Week | **implemented** — period rows only |
-| `Insights.dc.html` | Insights (full scroll) | **partly** — the advice card |
+| `Insights.dc.html` | Insights (full scroll) | **implemented** — see the note on charts |
 | `Detail.dc.html` | Commitment detail | **implemented** — actions and layout |
 
 `canvas.json` holds the layout and, more importantly, the **annotations** — one
@@ -75,8 +75,14 @@ text size), and the detail screen's subtitle names a period target but not a
 daily frequency, because `ResolvedHistory` carries no schedules and widening it
 for one label would cost three other screens.
 
-What is still unbuilt is the **Insights** board beyond its advice card, and the
-serif below.
+Insights follows the board on every rule that carries a product decision. Two
+things there are deliberately *not* the board: **by month is bars, not a line**
+(more legible on a phone at this width), and the **rolling-trend axis is fixed
+at 0–100% rather than fitted to the data**. Fitting is how a flat series is
+made to look interesting, and it is the wrong instinct in a consistency
+tracker — it draws an ordinary wobble as a collapse.
+
+What is still unbuilt is the serif below.
 
 ## The six principles
 
