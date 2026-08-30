@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 409 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 421 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -37,9 +37,8 @@ has four tabs: Today, History, Insights, Settings.
    Downloads or a share sheet needs `file_picker` or `share_plus`, and CLAUDE.md
    forbids adding a package unasked. **Answer yes or no and the work is small.**
    Android Auto Backup already covers the lost-phone case.
-4. **Period-close review UI — needs your decision.** Never built. A closed
-   period's result is visible on History and Insights, but there is no
-   moment-of-closure summary. Decide whether you want one.
+4. ~~Period-close review UI~~ — **built** 2026-08-30. See the section at the
+   foot of this file.
 
 ### Two things worth knowing before touching the code
 
@@ -91,7 +90,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 409 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 421 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1234,3 +1233,60 @@ overflowed the chart box by 114px. The commitment-detail geometry tests — adde
 only last session, precisely because that screen had never been covered —
 failed immediately. Gutter and chart height both follow
 `MediaQuery.textScalerOf` now.
+
+### The period-close review
+
+Spec §64, the last unbuilt thing on the list, and the only surface in the app
+permitted to state a **final** verdict. 421 tests pass (409 before, 12 new).
+**Not feel verified.**
+
+**It reviews the week that is over, never the one in progress.** Every other
+screen spends its effort refusing to score an open window — the day headline
+counts down instead of grading, a period is never late mid-week, today is not
+in any denominator. That restraint is precisely what earns this screen the
+right to print "44%" plainly: the week is finished and the figure cannot move.
+Offering a verdict on a Wednesday would contradict the accounting model
+everything else is built on. A test pins the reviewed range.
+
+**A card above the day's headline carries it**, and disappears once read. This
+is the whole argument for the review existing as its own surface: the numbers
+were already reachable on History and Insights, and *reachable is not seen*. A
+week that closes silently teaches the user that weeks do not close. The card
+renders nothing when there is nothing to say — no closed week with anything in
+it, or one already dismissed — so it never becomes chrome the eye learns to
+skip.
+
+**Two departures from the spec.** Both are the spec disagreeing with itself,
+and in both the product principles win over the mockup.
+
+The mockup says *"Needs attention: Running — 50%"*. Two sections later, §65
+lists *"No guilt — the application should describe behavior, not judge the
+user."* "Needs attention" instructs; **"Hardest"** describes. A week can be
+hard without anyone having failed at it. The row is left in ordinary ink rather
+than clay for the same reason — principle 2 reserves the strongest negative for
+a closed, missed day, and a commitment that merely went less well than another
+has not earned it.
+
+The mockup also names a best and a worst unconditionally. **Nothing is named**
+when only one commitment scored — best and hardest would be the same row — or
+when every commitment scored identically, because choosing a "hardest" out of a
+tie is the app inventing a judgement from noise. Both cases are tested.
+
+**Recovery is measured over ninety days, not over the week, and it is last.** A
+single week rarely contains a whole lapse-and-return, so computing it inside
+the week would be null most of the time and unrepresentative when it was not;
+it is a long-run trait and the review reports it as one. It closes the screen
+because `CLAUDE.md` makes recovery a headline metric over streaks, and of every
+figure here it is the only one that says something encouraging about a week
+that went badly.
+
+**Dismissal stores the week's start date, not a flag.** A boolean could say "a
+review was dismissed" and never say *which*, so the first Monday after a
+restore would either re-show a week the user had read or silently swallow one
+they had not. It lives in the settings table rather than shared preferences, so
+a database backup carries it — restore onto a new phone and last Monday's
+review does not reappear.
+
+Verified against four mutations: reviewing the current week, dropping the tie
+check, removing the empty-week gate, and failing to persist the dismissal each
+fail the suite.

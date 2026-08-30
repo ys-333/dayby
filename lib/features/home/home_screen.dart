@@ -18,6 +18,7 @@ import 'widgets/commitment_tile.dart';
 import 'widgets/period_tile.dart';
 import 'widgets/recent_strip.dart';
 import 'widgets/section_header.dart';
+import 'package:riyaz/features/review/widgets/review_card.dart';
 
 /// The tracking screen.
 ///
@@ -163,6 +164,10 @@ class _TodayListState extends ConsumerState<_TodayList> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Above the headline, and only on the days it has something to
+              // say. A closed week is the one thing on this screen that is
+              // more important than today.
+              if (widget.isToday) const ReviewCard(),
               _Headline(view: view, isToday: widget.isToday),
               const SizedBox(height: Insets.rowH),
               _Strip(date: view.date, isToday: widget.isToday),

@@ -1,8 +1,8 @@
 # TODO — closing the redesign
 
-**Every engineering item on this list is done as of 2026-08-30.** What is left
-is in two places and neither is code Claude can write: the device checks at the
-foot, and the one product decision in §4. The rest of the file is the record of
+**Every engineering item on this list is done as of 2026-08-30**, the
+period-close review included. What is left is the device checks at the foot,
+and none of it is code Claude can write. The rest of the file is the record of
 what was built and what was decided against.
 
 What was left to finish Riyaz's UI end to end, in the order the dependencies
@@ -198,10 +198,15 @@ vocabulary swap is a change to one file.
       Two left as taste — by month stays bars, and the trend axis is fixed at
       0–100% rather than fitted as the board draws it, because fitting turns
       an ordinary wobble into a cliff.
-- [ ] Period-close review UI — what the user sees when a week ends. Designed
-      away rather than built; there is no moment-of-closure summary. **Left
-      deliberately:** it is a new product surface rather than a fix, and no
-      board describes it.
+- [x] **Period-close review UI** — `widget`. Spec §64, and the only surface in
+      the app allowed to state a **final** verdict. It reviews the week that is
+      *over*, never the one in progress: a period's result is final only at
+      period close, and grading a Wednesday would contradict every other
+      screen. A card above the day's headline carries it, because the numbers
+      were already reachable on History and being reachable is not being seen.
+      Two departures from the spec, both recorded in `PROGRESS.md`: "Hardest"
+      rather than "Needs attention", and nothing named at all when there is one
+      commitment or a tie.
 
 ---
 

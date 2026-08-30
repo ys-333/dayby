@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/add_commitment/add_commitment_screen.dart';
 import '../features/commitment/commitment_detail_screen.dart';
+import '../features/review/week_review_screen.dart';
 import 'shell.dart';
 
 final GoRouter router = GoRouter(
@@ -13,6 +14,10 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: 'add',
           builder: (context, state) => const AddCommitmentScreen(),
+        ),
+        GoRoute(
+          path: 'review',
+          builder: (context, state) => const WeekReviewScreen(),
         ),
         GoRoute(
           path: 'commitment/:id',
