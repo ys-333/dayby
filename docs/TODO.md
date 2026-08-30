@@ -10,22 +10,26 @@ Status marks follow the ledger's rules:
 
 ---
 
-## 0. Blocked on you — nothing moves until these are answered
+## 0. Decisions — answered
 
-- [ ] **Icon vocabulary.** The Today board replaces the emoji with eight
-      monochrome stroked glyphs. The device pass agreed: full-colour emoji are
-      now the loudest thing on a deliberately muted screen.
-      **The catch:** `Commitment.icon` is a `String` written by the add screen
-      and serialised into the backup format (`backup_codec.dart:49,181`), so
-      this is a data migration over existing rows *and* old backups — not a
-      repaint. Answer needed: keep emoji, replace them, or allow both.
-      **Blocks phase 3.**
-- [ ] **Newsreader.** Specified by the Tokens board (serif for language, sans
-      for all numbers, one bundled weight, never `google_fonts`). Google Fonts
-      ships it *only* as a 451KB variable font and there is no subsetting tool
-      on this machine. Two agents disagree; it is your call. Blocks nothing.
-- [ ] **Export destination.** Reaching Downloads or a share sheet needs
-      `file_picker` or `share_plus` — a new dependency, which needs your yes.
+All three were answered on 2026-08-30. Kept here as the record of what was
+decided and why, because each one closed off an alternative.
+
+- [x] **Icon vocabulary — replace the emoji.** Eight monochrome stroked glyphs,
+      as the Today board specifies. `Commitment.icon` is a `String` written by
+      the add screen and serialised into the backup format
+      (`backup_codec.dart:49,181`), so this is a data migration over existing
+      rows *and* old backups. See §2 for what that costs.
+- [x] **Newsreader — skipped.** Google Fonts ships it only as a 451KB variable
+      font with no subsetting tool on this machine, and the board's own rule
+      (sans for every number) leaves the serif covering a handful of strings.
+      451KB does not buy a fix for anything the device pass found. The app
+      stays on the device sans; every serif on every board is unrepresented in
+      the build, deliberately.
+- [x] **Export destination — no new package.** Export stays on the app's
+      documents directory plus the clipboard. Android Auto Backup remains the
+      lost-phone story. A user who wants their data off the device by hand
+      still cannot get it, and that is the accepted cost.
 
 ---
 
@@ -80,24 +84,33 @@ already exist and have **zero callers**. The engines already honour both —
       one lead figure and a *dated* twelve-week grid. Cosmetic; do it after
       the three actions work.
 
-## 2. The icon migration — after §0 is answered
+## 2. The icon migration — decided, not built
 
 - [ ] Decide the mapping for rows that already hold an emoji.
 - [ ] Migrate the stored values; old backups must still import.
 - [ ] Replace the picker in `add_commitment_screen.dart`.
 
-## 3. Today — the biggest board, and the biggest visible win
+## 3. Today — done
 
-**Not downstream of §2.** The structural fixes are independent of what mark
-sits at the left edge of a row: build the structure, leave the emoji rendering
-exactly as it is, and let the vocabulary be decided separately. The migration
-cost belongs to the icon decision, not to this.
+Built 2026-08-30. The structure landed independently of §2, as planned: the
+emoji still render exactly as before, behind a new `CommitmentIcon` seam so the
+vocabulary swap is a change to one file.
 
-- [ ] Headline counts **down to zero** instead of scoring you.
-- [ ] Weekly targets move to their own group — a 3×/week target cannot be late
-      on a Tuesday and must not sit among things that can.
-- [ ] Drop the greeting (~180px) and the FAB that covers the last row. Dropping
-      the FAB means rehoming add-commitment.
+- [x] Headline counts **down to zero** instead of scoring you — `unit`,
+      `widget`. "Three left today" → "Done for today". A closed day tallies
+      instead, because once a day is over the count is a fact rather than a
+      verdict delivered mid-effort. Period targets and skips are both excluded
+      from the count; `formatting_test.dart` pins that no input produces a `%`.
+- [x] Weekly targets move to their own group — `widget`. `PeriodTile` is its
+      own widget with pips and a tally and **no status mark**, because a period
+      has no status today. Header says "NEVER LATE".
+- [x] Drop the greeting and the FAB — `widget`. Add moved into the day bar; the
+      test asserts no `FloatingActionButton` exists at all, so it cannot return
+      by accident. A fourteen-day banded strip took the greeting's space —
+      content rather than chrome, and it scores only days that are over.
+- [x] Three unconstrained-`Text`-in-a-`Row` overflows found and fixed before
+      shipping (95px at 320dp, 306px at 1.8× scale). Verified at 320dp, 400dp,
+      landscape and 1.8×.
 
 ## 4. Close-out
 

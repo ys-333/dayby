@@ -21,4 +21,27 @@ extension TypeRoles on TextTheme {
 
   /// The count, period or status word under a row title.
   TextStyle? get rowMeta => bodySmall;
+
+  /// The day's headline — the countdown, and the largest type on the screen.
+  ///
+  /// Regular weight on purpose. It is a sentence about the day, not a figure
+  /// to be read at a glance, and bolding it turns a quiet statement into an
+  /// announcement.
+  TextStyle? get dayHeadline => headlineLarge?.copyWith(
+        fontWeight: FontWeight.w400,
+      );
+
+  /// A small capitalised label naming a group of rows.
+  TextStyle? get sectionOverline => labelSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.1,
+      );
+
+  /// A tally that sits in a column and must not jitter as it changes.
+  TextStyle? get tabularMeta => bodyMedium?.copyWith(
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
+  /// A quiet line of context beneath or beside the content it explains.
+  TextStyle? get footnote => bodySmall;
 }

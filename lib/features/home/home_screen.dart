@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riyaz/app/formatting.dart';
 import 'package:riyaz/app/providers.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
+import 'package:riyaz/app/theme/tokens.dart';
+import 'package:riyaz/app/theme/type_roles.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
@@ -12,7 +15,23 @@ import 'package:riyaz/domain/time/civil_date.dart';
 import 'today_controller.dart';
 import 'today_view.dart';
 import 'widgets/commitment_tile.dart';
+import 'widgets/period_tile.dart';
+import 'widgets/recent_strip.dart';
+import 'widgets/section_header.dart';
 
+/// The tracking screen.
+///
+/// Three things the device pass found are answered here, and they are the
+/// reason the layout is what it is:
+///
+/// * The greeting cost ~180px above the first row, so on a phone the list
+///   began below the fold. It is gone. What replaced it — headline and strip —
+///   is content about the day, and it scrolls away with the list.
+/// * The FAB covered the last row permanently. Add moved into the day bar,
+///   where it costs no vertical space and covers nothing.
+/// * Daily rows and period targets rendered at identical weight, so a
+///   "3× a week" target looked overdue every day of the week. They are now two
+///   groups with two different row shapes.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -27,29 +46,32 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Header(date: date, isToday: date == today),
+            _DayBar(date: date, isToday: date == today),
             Expanded(
               child: view.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => _ErrorState(message: '$e'),
-                data: (data) =>
-                    data.isEmpty ? const _EmptyState() : _TodayList(view: data),
+                data: (data) => data.isEmpty
+                    ? const _EmptyState()
+                    : _TodayList(view: data, isToday: date == today),
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/add'),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add'),
-      ),
     );
   }
 }
 
-class _Header extends ConsumerWidget {
-  const _Header({required this.date, required this.isToday});
+/// Which day is on screen, how to move between days, and how to add.
+///
+/// Add lives here rather than in a floating button. A FAB is a 56dp disc
+/// pinned over the bottom-right of the list, and on the one screen whose whole
+/// job is a scrollable column of tap targets it permanently hides one of them.
+/// In the bar it is always reachable, never overlapping, and costs no height
+/// the day bar was not already spending.
+class _DayBar extends ConsumerWidget {
+  const _DayBar({required this.date, required this.isToday});
 
   final CivilDate date;
   final bool isToday;
@@ -57,104 +79,38 @@ class _Header extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final view = ref.watch(todayViewProvider(date)).value;
-    final hour = ref.watch(clockProvider).nowUtc().toLocal().hour;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(Insets.contentInset, 4, Insets.contentInset, 0),
+      child: Row(
         children: [
-          if (isToday)
-            Text(
-              '${greetingFor(hour)} 👋',
-              style: theme.textTheme.bodyLarge?.copyWith(
+          IconButton(
+            onPressed: () =>
+                ref.read(selectedDateProvider.notifier).previousDay(),
+            icon: const Icon(Icons.chevron_left_rounded),
+            tooltip: 'Previous day',
+          ),
+          Expanded(
+            child: Text(
+              isToday ? 'Today' : fullDayLabel(date),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () =>
-                    ref.read(selectedDateProvider.notifier).previousDay(),
-                icon: const Icon(Icons.chevron_left_rounded),
-                tooltip: 'Previous day',
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      isToday ? 'Today' : fullDayLabel(date),
-                      style: theme.textTheme.titleLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                    if (isToday)
-                      Text(
-                        fullDayLabel(date),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              IconButton(
-                // Disabled on today: the future cannot be recorded.
-                onPressed: isToday
-                    ? null
-                    : () => ref.read(selectedDateProvider.notifier).nextDay(),
-                icon: const Icon(Icons.chevron_right_rounded),
-                tooltip: 'Next day',
-              ),
-            ],
           ),
-          if (view != null && view.total > 0) ...[
-            const SizedBox(height: 12),
-            _Progress(view: view),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Progress extends StatelessWidget {
-  const _Progress({required this.view});
-
-  final TodayView view;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final percent = view.percent ?? 0;
-
-    return Semantics(
-      label: '$percent percent done, ${view.completed} of ${view.total}',
-      child: Row(
-        children: [
-          Text(
-            '$percent%',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+          IconButton(
+            // Disabled on today: the future cannot be recorded.
+            onPressed: isToday
+                ? null
+                : () => ref.read(selectedDateProvider.notifier).nextDay(),
+            icon: const Icon(Icons.chevron_right_rounded),
+            tooltip: 'Next day',
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: view.progress ?? 0,
-                minHeight: 8,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '${view.completed} / ${view.total}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          IconButton(
+            onPressed: () => context.go('/add'),
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Add commitment',
           ),
         ],
       ),
@@ -163,9 +119,10 @@ class _Progress extends StatelessWidget {
 }
 
 class _TodayList extends ConsumerStatefulWidget {
-  const _TodayList({required this.view});
+  const _TodayList({required this.view, required this.isToday});
 
   final TodayView view;
+  final bool isToday;
 
   @override
   ConsumerState<_TodayList> createState() => _TodayListState();
@@ -193,18 +150,67 @@ class _TodayListState extends ConsumerState<_TodayList> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
-      itemCount: view.items.length,
-      itemBuilder: (context, index) {
-        final item = view.items[index];
-        return CommitmentTile(
-          item: item,
-          onTap: () => _advance(context, item),
-          onLongPress: () => _showActions(context, item),
-        );
-      },
+    final daily = view.daily;
+    final period = view.period;
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: Insets.xl),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.rowH + Insets.contentInset,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Headline(view: view, isToday: widget.isToday),
+              const SizedBox(height: Insets.rowH),
+              _Strip(date: view.date, isToday: widget.isToday),
+            ],
+          ),
+        ),
+        if (daily.isNotEmpty) ...[
+          _Group(
+            title: 'Today',
+            trailing: '${view.dailyDone} of ${view.dailyExpected}',
+          ),
+          for (final item in daily)
+            CommitmentTile(
+              item: item,
+              onTap: () => _advance(context, item),
+              onLongPress: () => _showActions(context, item),
+            ),
+        ],
+        if (period.isNotEmpty) ...[
+          _Group(
+            title: _periodGroupTitle(period),
+            // Principle 3, said out loud. Without it the split between the two
+            // groups looks arbitrary; with it, the reason is on screen.
+            trailing: 'Never late',
+          ),
+          for (final item in period)
+            PeriodTile(
+              item: item,
+              onTap: () => _advance(context, item),
+              onLongPress: () => _showActions(context, item),
+            ),
+        ],
+        _MetPeriodsNote(view: view),
+      ],
     );
+  }
+
+  /// "This week" when every target is weekly, "This month" when every target
+  /// is monthly, and the neutral word when they are mixed — a heading that
+  /// says "week" above a monthly row is worse than one that says neither.
+  String _periodGroupTitle(List<TodayItem> period) {
+    final nouns = {for (final item in period) item.periodNoun};
+    if (nouns.length != 1) return 'Targets';
+    return switch (nouns.single) {
+      'week' => 'This week',
+      'month' => 'This month',
+      _ => 'Targets',
+    };
   }
 
   /// A tap does the most likely thing and nothing else: finish a simple row,
@@ -357,6 +363,140 @@ class _TodayListState extends ConsumerState<_TodayList> {
     // Dismissed by the user, or replaced by the next action: stop our timeout
     // so it cannot close a later bar.
     controller.closed.then((_) => timer.cancel());
+  }
+}
+
+/// The day's one big line.
+class _Headline extends StatelessWidget {
+  const _Headline({required this.view, required this.isToday});
+
+  final TodayView view;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = dayHeadline(
+      left: view.dailyLeft,
+      done: view.dailyDone,
+      expected: view.dailyExpected,
+      isToday: isToday,
+    );
+
+    return Semantics(
+      header: true,
+      child: Text(text, style: Theme.of(context).textTheme.dayHeadline),
+    );
+  }
+}
+
+/// The strip, with its own loading and error behaviour.
+///
+/// It reads a wider range than the list does, so it resolves separately and
+/// must never hold the list up. While it is loading it reserves its height and
+/// draws nothing: a spinner here would put a spinner above the rows the user
+/// opened the app to tap.
+class _Strip extends ConsumerWidget {
+  const _Strip({required this.date, required this.isToday});
+
+  final CivilDate date;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final days = ref.watch(recentDaysProvider(date));
+    final view = ref.watch(todayViewProvider(date)).value;
+
+    final caption = !isToday
+        ? 'Day closed'
+        : view != null && view.dailyLeft == 0 && view.dailyExpected > 0
+            ? 'Today counted'
+            : 'Today still open';
+
+    return days.maybeWhen(
+      data: (days) => RecentStrip(days: days, caption: caption),
+      orElse: () => const SizedBox(
+        height: Sizes.stripCell + Insets.rowH,
+      ),
+    );
+  }
+}
+
+class _Group extends StatelessWidget {
+  const _Group({required this.title, this.trailing});
+
+  final String title;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Insets.rowH + Insets.contentInset,
+          Insets.sectionGap,
+          Insets.rowH + Insets.contentInset,
+          Insets.sectionHeaderGap,
+        ),
+        child: SectionHeader(title: title, trailing: trailing),
+      );
+}
+
+/// "Books and Long walk are done for the week."
+///
+/// The counterweight to a screen that otherwise only ever shows what is
+/// outstanding. A met target drops out of the day's arithmetic entirely, and
+/// without this line the work that earned it becomes invisible the moment it
+/// is finished.
+class _MetPeriodsNote extends StatelessWidget {
+  const _MetPeriodsNote({required this.view});
+
+  final TodayView view;
+
+  @override
+  Widget build(BuildContext context) {
+    final byNoun = view.metPeriodsByNoun;
+    if (byNoun.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final lines = [
+      for (final entry in byNoun.entries)
+        '${joinNames([for (final i in entry.value) i.commitment.name])} '
+            '${entry.value.length == 1 ? 'is' : 'are'} done for the '
+            '${entry.key}',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Insets.rowH + Insets.contentInset,
+        Insets.rowH,
+        Insets.rowH + Insets.contentInset,
+        0,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(Insets.rowTrailingGap),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(Radii.row),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.check_rounded,
+              size: 18,
+              color: context.statusColors.done,
+            ),
+            const SizedBox(width: Insets.rowTrailingGap),
+            Expanded(
+              child: Text(
+                lines.join('\n'),
+                style: theme.textTheme.footnote?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

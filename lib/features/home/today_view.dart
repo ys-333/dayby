@@ -25,6 +25,40 @@ class TodayItem {
   /// Whether tapping should add one more rather than complete outright.
   bool get isCountable => isPeriod || target > 1;
 
+  /// Finished: the target for this occurrence is met.
+  bool get isDone => status == OccurrenceStatus.done;
+
+  /// Still open and still actionable today.
+  bool get isPending => status == OccurrenceStatus.pending;
+
+  /// Out of the reckoning — shown, never scored, and never struck through.
+  bool get isExcluded =>
+      status == OccurrenceStatus.skipped || status == OccurrenceStatus.paused;
+
+  /// The word a row shows under its name, or null when the status is one the
+  /// mark already says.
+  ///
+  /// Pending and done need no caption: an empty ring and a filled tick are
+  /// unambiguous, and a column of "Not done yet" under every untouched row is
+  /// the noise the redesign set out to remove. Everything else is a state the
+  /// user cannot infer from the mark alone, so it stays legible as words.
+  String? get statusCaption => switch (status) {
+        OccurrenceStatus.pending => null,
+        OccurrenceStatus.done => null,
+        OccurrenceStatus.partial => 'Partial',
+        OccurrenceStatus.missed => 'Missed',
+        OccurrenceStatus.skipped => 'Skipped',
+        OccurrenceStatus.paused => 'Paused',
+        OccurrenceStatus.notScheduled => 'Not scheduled',
+      };
+
+  /// The bare noun for this row's period: "week", "month".
+  String? get periodNoun => switch (periodLabel) {
+        'this week' => 'week',
+        'this month' => 'month',
+        _ => null,
+      };
+
   /// The scope word for a period row: "this week", "this month".
   String? get periodLabel {
     final occurrence = resolved.occurrence;
@@ -68,6 +102,36 @@ class TodayView {
       countable.where((i) => i.status == OccurrenceStatus.done).length;
 
   int get total => countable.length;
+
+  /// Rows the day can be late on. Principle 3: a daily commitment and a
+  /// period target never share a group, because only one of them can be
+  /// behind at four in the afternoon.
+  List<TodayItem> get daily => items.where((i) => !i.isPeriod).toList();
+
+  /// Week and month targets, scored over their period rather than this day.
+  List<TodayItem> get period => items.where((i) => i.isPeriod).toList();
+
+  /// Daily rows still open. Skipped, paused and already-recorded rows are not
+  /// "left" — nothing about them is waiting on the user.
+  int get dailyLeft => daily.where((i) => i.isPending).length;
+
+  /// Daily rows that count toward the day: everything but skips and pauses.
+  int get dailyExpected => daily.where((i) => !i.isExcluded).length;
+
+  int get dailyDone => daily.where((i) => i.isDone).length;
+
+  /// Period targets already met, grouped by their period noun — the material
+  /// for the reassurance line at the foot of the list.
+  Map<String, List<TodayItem>> get metPeriodsByNoun {
+    final byNoun = <String, List<TodayItem>>{};
+    for (final item in period) {
+      if (!item.isDone) continue;
+      final noun = item.periodNoun;
+      if (noun == null) continue;
+      byNoun.putIfAbsent(noun, () => []).add(item);
+    }
+    return byNoun;
+  }
 
   /// Null when there is nothing to do — an empty day is not 0% done.
   double? get progress => total == 0 ? null : completed / total;

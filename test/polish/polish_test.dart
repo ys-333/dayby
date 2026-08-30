@@ -246,8 +246,18 @@ void main() {
       await tester.tap(find.text('Today').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Friday, Aug 28'), findsOneWidget,
-          reason: 'Today should mean today, not the day left on screen');
+      // Scoped to the screen: the nav destination is also labelled "Today",
+      // and the day bar says "Today" rather than the date once it is on the
+      // current day.
+      expect(
+        find.descendant(
+          of: find.byType(HomeScreen),
+          matching: find.text('Today'),
+        ),
+        findsOneWidget,
+        reason: 'Today should mean today, not the day left on screen',
+      );
+      expect(find.text('Thursday, Aug 27'), findsNothing);
     });
 
     testWidgets('a calendar day still opens that day on the tracking tab',
