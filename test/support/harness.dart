@@ -98,6 +98,21 @@ class Harness {
     ).exportJson();
   }
 
+  /// Imports a backup through the same service the UI uses.
+  Future<void> restore(String json) async {
+    final service = BackupService(
+      database: db,
+      repository: repo,
+      rollups: RollupRepository(db, resolution()),
+      clock: clock,
+      settings: const AppSettings(),
+    );
+    await service.import(
+      service.validate(json).document,
+      mode: ImportMode.replace,
+    );
+  }
+
   /// Simulates a lost device.
   Future<void> wipe() async {
     await db.delete(db.commitments).go();

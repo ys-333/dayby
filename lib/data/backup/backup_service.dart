@@ -244,7 +244,7 @@ class BackupService {
                 id: p.id,
                 commitmentId: p.commitmentId,
                 fromDay: p.from,
-                toDay: p.to,
+                toDay: Value(p.to),
               ),
             );
         inserted++;

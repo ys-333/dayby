@@ -4,6 +4,7 @@ import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/model/frequency.dart';
+import 'package:riyaz/domain/model/pause_period.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 
@@ -36,18 +37,37 @@ const List<String> _v1Schema = [
       'PRIMARY KEY ("key"));',
 ];
 
+/// Schema v2: v1 plus `occurrence_rollups`, with `pause_periods.to_day` still
+/// **NOT NULL** — the constraint v3 exists to drop. Dumped from a real v2
+/// database's `sqlite_master`, not retyped.
+const List<String> _v2Schema = [
+  ..._v1Schema,
+  'CREATE TABLE "occurrence_rollups" ("commitment_id" TEXT NOT NULL '
+      'REFERENCES commitments (id) ON DELETE CASCADE, "scope" INTEGER NOT NULL, '
+      '"span_start" INTEGER NOT NULL, "span_end" INTEGER NOT NULL, '
+      '"status" INTEGER NOT NULL, "completed" INTEGER NOT NULL, '
+      '"target" INTEGER NOT NULL, "credit" REAL NOT NULL, '
+      'PRIMARY KEY ("commitment_id", "scope", "span_start"));',
+];
+
 /// Opens an [AppDatabase] on a database that already contains schema v1 and
 /// real data, so opening it exercises the actual v1 → v2 migration path.
 ///
 /// Uses drift's `setup` hook rather than a direct sqlite3 dependency: the
 /// callback hands over the raw database before drift inspects its version, so
 /// the v1 schema can be laid down first without declaring a new package.
-AppDatabase _openMigratedFromV1() => AppDatabase(
+AppDatabase _openMigratedFromV1() => _openMigratedFrom(_v1Schema, 1);
+
+/// Same, from schema v2 — the shape that actually shipped, and the one a real
+/// upgrade to v3 will start from.
+AppDatabase _openMigratedFromV2() => _openMigratedFrom(_v2Schema, 2);
+
+AppDatabase _openMigratedFrom(List<String> schema, int version) => AppDatabase(
       NativeDatabase.memory(setup: (raw) {
-        for (final ddl in _v1Schema) {
+        for (final ddl in schema) {
           raw.execute(ddl);
         }
-        raw.execute('PRAGMA user_version = 1');
+        raw.execute('PRAGMA user_version = $version');
 
         raw.execute(
           'INSERT INTO commitments (id, name, icon, started_on, state, '
@@ -88,14 +108,14 @@ Future<int> _userVersion(AppDatabase db) async {
 }
 
 void main() {
-  test('a v1 database migrates to v2 with every record intact', () async {
+  test('a v1 database migrates forward with every record intact', () async {
     final db = _openMigratedFromV1();
     addTearDown(db.close);
 
     // Opening runs the migration.
     final snapshot = await TrackingRepository(db).readAll();
 
-    expect(await _userVersion(db), 2, reason: 'schema version must advance');
+    expect(await _userVersion(db), 3, reason: 'schema version must advance');
 
     // Nothing lost. This is the whole point: the database holds years of
     // history that exists nowhere else, so a schema bump must never drop it.
@@ -150,7 +170,8 @@ void main() {
     expect(await db.select(db.pausePeriods).get(), isEmpty);
   });
 
-  test('a fresh v2 install still works and reports version 2', () async {
+  test('a fresh install still works and reports the current version',
+      () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
@@ -160,8 +181,71 @@ void main() {
       startedOn: d(2026, 8, 1),
       nowUtc: DateTime.utc(2026, 8, 28),
     );
-    expect(await _userVersion(db), 2);
+    expect(await _userVersion(db), 3);
     expect((await TrackingRepository(db).readAll()).commitments, hasLength(1));
   });
 
+  group('v2 to v3 — pause_periods.to_day loses NOT NULL', () {
+    test('every existing pause survives the table rebuild', () async {
+      final db = _openMigratedFromV2();
+      addTearDown(db.close);
+
+      final snapshot = await TrackingRepository(db).readAll();
+      expect(await _userVersion(db), 3);
+
+      // SQLite cannot drop NOT NULL in place, so v3 recreates the table and
+      // copies every row across. This is the assertion that the copy happened:
+      // a rebuild that forgot it would leave an empty table and throw nothing.
+      final pauses = snapshot.pausesFor('c1');
+      expect(pauses, hasLength(1));
+      expect(pauses.single.id, 'p1');
+      expect(pauses.single.from, d(2026, 8, 20));
+      expect(pauses.single.to, d(2026, 8, 22));
+      expect(pauses.single.isOpen, isFalse,
+          reason: 'a dated pause must not become open-ended in the rebuild');
+
+      // Everything else is untouched by the rebuild.
+      expect(snapshot.commitments, hasLength(1));
+      expect(snapshot.events, hasLength(5));
+      expect(snapshot.schedulesFor('c1'), hasLength(1));
+    });
+
+    test('an open-ended pause can be stored after migrating', () async {
+      final db = _openMigratedFromV2();
+      addTearDown(db.close);
+      final repo = TrackingRepository(db);
+
+      await repo.pauseCommitment(commitmentId: 'c1', from: d(2026, 9, 1));
+
+      final open = (await repo.readAll())
+          .pausesFor('c1')
+          .where((p) => p.isOpen)
+          .toList();
+      expect(open, hasLength(1),
+          reason: 'the whole point of v3: a pause with no end yet');
+      expect(open.single.from, d(2026, 9, 1));
+    });
+
+    test('foreign keys still cascade into the rebuilt table', () async {
+      final db = _openMigratedFromV2();
+      addTearDown(db.close);
+
+      // A rebuilt table that lost its REFERENCES clause would orphan pauses
+      // forever, and nothing would ever throw.
+      await (db.delete(db.commitments)..where((t) => t.id.equals('c1'))).go();
+      expect(await db.select(db.pausePeriods).get(), isEmpty);
+    });
+
+    test('migrating twice is a no-op, not a second rebuild', () async {
+      final db = _openMigratedFromV2();
+      addTearDown(db.close);
+      await TrackingRepository(db).readAll();
+      await db.close();
+
+      // Reopening an already-v3 database must not run the v3 step again.
+      final again = AppDatabase(NativeDatabase.memory());
+      addTearDown(again.close);
+      expect(await _userVersion(again), 3);
+    });
+  });
 }

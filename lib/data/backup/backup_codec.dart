@@ -83,11 +83,16 @@ class BackupCodec {
           },
       };
 
+  /// The `to` key is always written, `null` and all.
+  ///
+  /// Omitting it for an open pause would make "still paused" and "field lost
+  /// in a truncated write" the same bytes. The file is meant to be repairable
+  /// by hand, so an explicit null is worth the four characters.
   Map<String, dynamic> _pause(PausePeriod p) => {
         'id': p.id,
         'commitmentId': p.commitmentId,
         'from': p.from.iso,
-        'to': p.to.iso,
+        'to': p.to?.iso,
       };
 
   Map<String, dynamic> _event(TrackingEvent e) => {
@@ -228,11 +233,16 @@ class BackupCodec {
     };
   }
 
+  /// A missing or null `to` is an open pause.
+  ///
+  /// Both spellings are accepted on read even though only one is written: a
+  /// v1 file always carried a date, and a hand-repaired file may well have had
+  /// the key deleted rather than set to null.
   PausePeriod _readPause(Map<String, dynamic> m) => PausePeriod(
         id: _string(m['id'], 'pause.id'),
         commitmentId: _string(m['commitmentId'], 'pause.commitmentId'),
         from: _date(m['from'], 'pause.from'),
-        to: _date(m['to'], 'pause.to'),
+        to: m['to'] == null ? null : _date(m['to'], 'pause.to'),
       );
 
   TrackingEvent _readEvent(Map<String, dynamic> m) => TrackingEvent(

@@ -289,18 +289,94 @@ class TrackingRepository {
     await onWrite?.call(date);
   }
 
+  /// Suspends a commitment from [from], until [to] or until it is resumed.
+  ///
+  /// A pause is the *only* correct way to stop expecting something for a
+  /// while. `CommitmentState.paused` exists on the model and has never had a
+  /// single reader: `lib/domain/` consults `PausePeriods` and nothing else
+  /// (`recurrence_engine.dart:34`, `accounting_engine.dart:162`). Setting the
+  /// flag instead would look right on screen, change nothing the engine sees,
+  /// and quietly bank a miss a day for the whole "pause" — the same failure
+  /// archiving shipped with.
+  ///
+  /// **At most one open pause per commitment.** Two overlapping open pauses
+  /// would both cover every future day, so resuming would close one and leave
+  /// the other still suspending everything — a state the user cannot see and
+  /// cannot get out of. Starting a new pause therefore closes any open one the
+  /// day before the new one begins, and drops it entirely if that leaves it
+  /// covering nothing.
   Future<void> pauseCommitment({
     required String commitmentId,
     required CivilDate from,
-    required CivilDate to,
+    CivilDate? to,
   }) async {
-    await _db.into(_db.pausePeriods).insert(PausePeriodsCompanion.insert(
-          id: _ids.next('p'),
-          commitmentId: commitmentId,
-          fromDay: from,
-          toDay: to,
-        ));
+    await _db.transaction(() async {
+      await _closeOpenPauses(commitmentId, at: from.plusDays(-1));
+      await _db.into(_db.pausePeriods).insert(PausePeriodsCompanion.insert(
+            id: _ids.next('p'),
+            commitmentId: commitmentId,
+            fromDay: from,
+            toDay: Value(to),
+          ));
+    });
     await onWrite?.call(from);
+  }
+
+  /// Ends the open pause, making [on] the first day expected again.
+  ///
+  /// The pause's last covered day is `on - 1`: resuming *on* a day means that
+  /// day is lived normally. Pausing and resuming the same day leaves a pause
+  /// covering nothing, and that row is deleted rather than stored — an end
+  /// before its own start is a row every future reader would have to know to
+  /// skip.
+  ///
+  /// Returns the date rollups were invalidated from, or null when there was no
+  /// open pause to end.
+  ///
+  /// Invalidation runs from the pause's **start**, not from [on]. Only days
+  /// after `on` change status, so the narrower range would be enough — but a
+  /// rollup is a cache and the cost of rebuilding a few extra days is a
+  /// rounding error against the cost of one stale row that nothing ever
+  /// corrects. `pauseCommitment` already takes the same wide view.
+  Future<CivilDate?> resumeCommitment({
+    required String commitmentId,
+    required CivilDate on,
+  }) async {
+    final open = await _openPause(commitmentId);
+    if (open == null) return null;
+
+    await _db.transaction(
+      () => _closeOpenPauses(commitmentId, at: on.plusDays(-1)),
+    );
+    await onWrite?.call(open.fromDay);
+    return open.fromDay;
+  }
+
+  /// The commitment's open-ended pause, if it has one.
+  Future<PausePeriodRow?> _openPause(String commitmentId) =>
+      (_db.select(_db.pausePeriods)
+            ..where((t) => t.commitmentId.equals(commitmentId) &
+                t.toDay.isNull()))
+          .getSingleOrNull();
+
+  /// Closes every open pause at [at], deleting any left covering no day.
+  ///
+  /// Plural and unconditional despite the one-open-pause invariant: this is
+  /// what *enforces* it, and a database restored from a hand-edited backup can
+  /// arrive holding two. Repairing that silently is better than honouring it.
+  Future<void> _closeOpenPauses(
+    String commitmentId, {
+    required CivilDate at,
+  }) async {
+    await (_db.delete(_db.pausePeriods)
+          ..where((t) => t.commitmentId.equals(commitmentId) &
+              t.toDay.isNull() &
+              t.fromDay.isBiggerThanValue(at.epochDay)))
+        .go();
+    await (_db.update(_db.pausePeriods)
+          ..where((t) => t.commitmentId.equals(commitmentId) &
+              t.toDay.isNull()))
+        .write(PausePeriodsCompanion(toDay: Value(at)));
   }
 
   /// Edits a commitment. Fields left null are untouched.

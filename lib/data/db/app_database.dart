@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +42,18 @@ class AppDatabase extends _$AppDatabase {
             // v2 adds materialised rollups. Purely derived, so creating the
             // table empty is safe — it rebuilds itself on first read.
             await m.createTable(occurrenceRollups);
+          }
+          if (from < 3) {
+            // v3 makes `pause_periods.to_day` nullable, so a pause can be
+            // open-ended — "paused until I resume" rather than "paused until a
+            // date I have to guess now".
+            //
+            // A full table rebuild rather than an ALTER: SQLite cannot drop a
+            // NOT NULL constraint in place. `TableMigration` with no column
+            // transformer creates the new shape, copies every row across,
+            // drops the old table and renames — so existing pauses keep their
+            // ids and their dates, and only the constraint changes.
+            await m.alterTable(TableMigration(pausePeriods));
           }
         },
         beforeOpen: (details) async {

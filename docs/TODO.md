@@ -49,27 +49,27 @@ already exist and have **zero callers**. The engines already honour both —
       the commitment accruing a miss a day forever (measured 49 of 49). Tests
       resolve *past* the archive date, which is what the first pair failed to
       do.
-- [ ] **Pause and resume.** Wire `pauseCommitment()`. Paused days are
-      `NOT_EXPECTED`, never misses — assert that in the same commit.
-      **Two traps found while building archive.** `CommitmentState.paused` has
-      *zero* references in the whole codebase — the engines read `PausePeriods`
-      exclusively (`recurrence_engine.dart:34`, `accounting_engine.dart:162`).
-      Wiring Pause to `setState(paused)` would look right and silently do
-      nothing, leaving the engine still expecting occurrences and marking them
-      MISSED. And `PausePeriod.to` is non-null, so "pause until I resume" needs
-      a **nullable column, schema v3** — decided; a far-future sentinel would
-      leak into `PauseCoverage.covers`, into calendar arithmetic, and into the
-      backup file that `backup_codec.dart` keeps human-readable precisely so a
-      damaged one can be repaired by hand.
-      Real cost, all of it in the format contract rather than the column:
-      bump `BackupDocument.currentVersion`; teach `_readPause` to accept a
-      null `to` while still reading old files; write `"to": null` explicitly
-      rather than omitting the key; `covers()` becomes
-      `date >= from && (to == null || date <= to)`; enforce **at most one open
-      pause per commitment**, closing any open one when a new pause starts;
-      and give resume the `markStale(from)` that only the create path has
-      today. `TableMigration` rebuild — SQLite cannot drop NOT NULL in place.
-      `_resolutionVersion` does **not** move: the rule is unchanged, only the
+- [x] **Pause and resume** — `unit`, `widget`, `migration`. Schema v3 makes
+      `pause_periods.to_day` nullable via a `TableMigration` rebuild, so a
+      pause can be open-ended. Both traps were real and both are now pinned:
+      `CommitmentState.paused` is still unread by `lib/domain/`, so the action
+      writes a `PausePeriod` — and the test that proves it goes through the
+      menu, then resolves sixty days *past* the pause and asserts nothing
+      resolves at all. Twelve of nineteen tests fail if the pause stops
+      extending, so the suite is not decorative.
+      **Format contract, all of it done:** `BackupDocument.currentVersion` is
+      2; `"to": null` is written explicitly rather than the key omitted, so
+      "still paused" and "field lost in a truncated write" are different
+      bytes; `_readPause` accepts a null *or* a missing `to`, because a v1 file
+      always carried a date and a hand-repaired one may have had the line
+      deleted; `covers()` is
+      `date >= from && (to == null || date <= to)`. **At most one open pause**
+      is enforced by closing any open one the day before a new one starts, and
+      deleting it if that leaves it covering nothing. Resume invalidates
+      rollups from the pause's *start*, not from the resume date — wider than
+      strictly needed, on the principle that a rollup is a cache and one stale
+      row nothing corrects costs more than rebuilding a few extra days.
+      `_resolutionVersion` did **not** move: the rule is unchanged, only the
       data.
 - [x] **Edit** — `unit`, `widget`. `updateCommitment` is effective-dated: the
       version in force closes the day before the change, a new one opens on

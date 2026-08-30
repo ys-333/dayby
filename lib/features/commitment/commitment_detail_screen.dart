@@ -7,6 +7,7 @@ import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/model/commitment.dart';
+import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/features/home/widgets/status_indicator.dart';
 
 import 'commitment_detail_controller.dart';
@@ -48,6 +49,7 @@ class _CommitmentDetailScreenState
     final detail = ref.watch(commitmentDetailProvider(widget.commitmentId));
     final commitment = detail.value?.commitment;
     final archived = commitment?.state == CommitmentState.archived;
+    final pause = ref.watch(openPauseProvider(widget.commitmentId)).value;
 
     return Scaffold(
       appBar: AppBar(
@@ -61,6 +63,15 @@ class _CommitmentDetailScreenState
                   value: _Action.edit,
                   child: Text('Edit'),
                 ),
+                // Not offered on an archived commitment: its schedule is
+                // already closed, so there is nothing left to suspend and
+                // "Paused" on top of "Archived" would be two words for one
+                // state.
+                if (!archived)
+                  PopupMenuItem(
+                    value: pause == null ? _Action.pause : _Action.resume,
+                    child: Text(pause == null ? 'Pause' : 'Resume'),
+                  ),
                 PopupMenuItem(
                   value: archived ? _Action.unarchive : _Action.archive,
                   child: Text(archived ? 'Unarchive' : 'Archive'),
@@ -117,6 +128,21 @@ class _CommitmentDetailScreenState
           _say('Back in your daily list.',
               undo: () => actions.archive(commitment.id));
         }
+      case _Action.pause:
+        final from = ref.read(todayProvider);
+        await actions.pause(commitment.id);
+        if (mounted) {
+          _say('Paused. These days will not count as missed.',
+              undo: () => actions.cancelPause(commitment.id, from));
+        }
+      case _Action.resume:
+        final from = await actions.resume(commitment.id);
+        if (mounted) {
+          _say('Resumed from today.',
+              undo: from == null
+                  ? null
+                  : () => actions.restorePause(commitment.id, from));
+        }
     }
   }
 
@@ -140,7 +166,61 @@ class _CommitmentDetailScreenState
   }
 }
 
-enum _Action { edit, archive, unarchive }
+enum _Action { edit, pause, resume, archive, unarchive }
+
+/// Says the commitment is paused, from when, and what that means for scoring.
+///
+/// The reassurance is the point. A user pauses because they are injured or
+/// away, and the fear a tracker creates in that moment is that the streak is
+/// dying while they are not looking. Saying "these days are not counted as
+/// missed" on the screen showing their numbers is worth more than any
+/// indicator on the row.
+///
+/// Renders nothing when the commitment is not paused, rather than being
+/// conditionally built by the caller — the pause state lives in its own
+/// stream, and having the widget own the decision keeps that stream out of the
+/// body's build.
+class _PausedBanner extends ConsumerWidget {
+  const _PausedBanner({required this.commitmentId});
+
+  final String commitmentId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pause = ref.watch(openPauseProvider(commitmentId)).value;
+    if (pause == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: Insets.rowH),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Insets.rowH,
+        vertical: Insets.rowV,
+      ),
+      decoration: BoxDecoration(
+        color: context.palette.surface,
+        borderRadius: BorderRadius.circular(Radii.row),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.pause_circle_outline_rounded,
+            size: 18,
+            color: context.statusColors.paused,
+          ),
+          const SizedBox(width: Insets.rowTrailingGap),
+          Expanded(
+            child: Text(
+              'Paused since ${fullDayLabel(pause.from)}. '
+              'These days are not counted as missed.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Says the commitment is out of the daily list, and that nothing was lost.
 ///
@@ -202,7 +282,9 @@ class _Body extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         if (detail.commitment.state == CommitmentState.archived)
-          _ArchivedBanner(archivedOn: detail.commitment.archivedOn?.iso),
+          _ArchivedBanner(archivedOn: detail.commitment.archivedOn?.iso)
+        else
+          _PausedBanner(commitmentId: detail.commitment.id),
         Row(
           children: [
             if (detail.commitment.icon != null) ...[
