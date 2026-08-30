@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/domain/analytics/analytics_engine.dart';
 
 /// Rolling-consistency line.
@@ -43,8 +44,15 @@ class TrendChart extends StatelessWidget {
         child: CustomPaint(
           painter: _TrendPainter(
             points: points,
-            line: scheme.primary,
-            grid: scheme.outlineVariant,
+            // Straight from the palette, not from `scheme.primary` and
+            // `scheme.outlineVariant`. Those resolve to the same two colours
+            // today — `theme_contract_test.dart` pins that — but they are UI
+            // roles: primary is the colour of a button, and asking it for a
+            // data line means the chart re-tints itself the day the button
+            // does. A plotted series and a rule under it are graphics, and
+            // they take graphic values.
+            line: context.palette.sage,
+            grid: context.palette.line,
           ),
           size: Size.infinite,
         ),

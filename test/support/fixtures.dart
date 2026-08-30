@@ -8,10 +8,15 @@ import 'package:timezone/timezone.dart' as tz;
 
 const commitmentId = 'c1';
 
-AccountingCalendar calendarFor(String zone, {int boundaryHour = 4}) =>
+AccountingCalendar calendarFor(
+  String zone, {
+  int boundaryHour = 4,
+  int weekStartsOn = DateTime.monday,
+}) =>
     AccountingCalendar(
       zone: tz.getLocation(zone),
       dayBoundaryHour: boundaryHour,
+      weekStartsOn: weekStartsOn,
     );
 
 CommitmentSchedule schedule({

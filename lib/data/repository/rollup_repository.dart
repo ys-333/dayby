@@ -45,9 +45,30 @@ class RollupRepository {
   /// [ScoringWeights] exists to be changed, and requiring whoever changes it to
   /// also remember a version bump is the kind of discipline that fails
   /// silently — which is exactly the failure this whole marker guards against.
+  ///
+  /// The calendar's three settings are folded in for the same reason, and they
+  /// are the ones with teeth. **A rollup is a cached answer to "what happened
+  /// on this date", and all three change what a date *is*.** Move the day
+  /// boundary from 04:00 to midnight and every late-night completion shifts a
+  /// day; change the timezone and the same instants land on different days;
+  /// change the week start and every weekly target is scored over a different
+  /// seven days. Every existing rollup would then disagree with the engine,
+  /// permanently and silently, because the staleness watermark tracks changed
+  /// *data* and none of the underlying rows would have moved.
+  ///
+  /// **Latent today, deliberately.** `appSettings` is a hardcoded constant with
+  /// no runtime source, so nothing can change these yet. This is insurance for
+  /// the day the timezone becomes device-derived or the boundary becomes a
+  /// setting — and it is the cheap half of that change, so it goes in now
+  /// rather than being remembered later.
   String get _logicVersion {
     final weights = _resolution.accounting.weights;
-    return '$_resolutionVersion/${weights.done}/${weights.partial}';
+    final calendar = _resolution.accounting.calendar;
+    return '$_resolutionVersion'
+        '/${weights.done}/${weights.partial}'
+        '/${calendar.zone.name}'
+        '/${calendar.dayBoundaryHour}'
+        '/${calendar.weekStartsOn}';
   }
 
   /// Discards the cache when it was built under rules that no longer apply.

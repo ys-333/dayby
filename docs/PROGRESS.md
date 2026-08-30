@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 383 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 399 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 383 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 399 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1064,3 +1064,49 @@ insights so one subtitle could name a frequency would make three screens pay
 for a label only this one shows. What is there instead is what can be said
 truthfully from the occurrences already resolved: the period for a period
 target, and the start date always.
+
+### Close-out: two guards, and one rename not done
+
+Logic verified: 399 tests pass (383 before, 16 new). **Not feel verified.**
+
+**The rollup logic stamp now includes the calendar.** `timezoneName`,
+`dayBoundaryHour` and `weekStartsOn` join the scoring weights, read straight
+off the resolution service's own calendar rather than by injecting
+`AppSettings`. These three are the ones with teeth. A rollup is a cached answer
+to *what happened on this date*, and each of them changes what a date **is**:
+move the boundary from 04:00 to midnight and every late-night completion shifts
+a day; change the zone and the same instants land on different days; change the
+week start and every weekly target is scored over a different seven days. In
+none of those cases does a single stored row move — so the staleness watermark,
+which tracks changed *data*, sees nothing at all, and every rollup would go on
+contradicting the engine silently. Three tests cover it and reverting the change
+fails exactly those three. Still latent: `appSettings` is a hardcoded constant
+with no runtime source, so nothing can change these yet. This is the cheap half
+of the day the timezone becomes device-derived.
+
+**The raw `scheme.*` call sites were a decision, not a rename.** All 38 already
+resolve to the right palette value, and 34 of them are `onSurfaceVariant` —
+Material's role for de-emphasised text on a surface, which is precisely the
+question a caption is asking. Rewriting those as `palette.ink2` would swap a
+semantic role for a palette index and read worse at every call site.
+`StatusColors` and `BandColors` earn their existence because Material has no
+role for "a missed day" or "a weak week"; it does have one for quiet text.
+
+What was genuinely missing was any guard on the mapping. Thirty-four widgets
+trusted `onSurfaceVariant` to be `ink2`, and nothing anywhere said so — one
+line in `riyazTheme` could have re-tinted every caption in the app with no test
+failing. `theme_contract_test.dart` now pins every role the app leans on, in
+both brightnesses, and asserts that **nothing anywhere reads as red**:
+`ColorScheme.fromSeed` supplies a real red for `error` unless it is overridden,
+and one un-overridden role is all it takes to put a validation red on a screen
+that has none. Dropping two overrides fails four of its tests.
+
+Two call sites did move. `TrendChart` was asking `scheme.primary` for its line
+and `scheme.outlineVariant` for its grid. Those give the right colours today —
+the contract test now pins that — but they are UI roles: primary is the colour
+of a button, and a chart that borrows it re-tints itself the day the button
+does. A plotted series and the rule under it are graphics, so they take graphic
+values.
+
+**`CLAUDE.md` said "No code yet".** It had described an empty repository since
+before the first commit, which is the first thing a new session reads. Fixed.

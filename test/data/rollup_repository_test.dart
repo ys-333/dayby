@@ -10,6 +10,7 @@ import 'package:riyaz/domain/analytics/scoring.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/domain/recurrence/recurrence_engine.dart';
+import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -189,6 +190,74 @@ void main() {
           reason: 'the cache was built under partial = 0.5');
     });
 
+    /// The same database and events, read through a differently configured
+    /// calendar.
+    RollupRepository withCalendar(AccountingCalendar calendar) =>
+        RollupRepository(
+          db,
+          ResolutionService(
+            repository: tracking,
+            accounting: AccountingEngine(
+              calendar: calendar,
+              recurrence: RecurrenceEngine(calendar),
+            ),
+            clock: clock,
+          ),
+        );
+
+    test('moving the day boundary rebuilds the cache', () async {
+      // The one with the most teeth. A rollup is a cached answer to "what
+      // happened on this date", and the boundary decides what a date *is* —
+      // move it and every late-night completion lands on a different day,
+      // while not one stored row changes, so the staleness watermark sees
+      // nothing at all.
+      await seed(doneInAugust: [1, 2]);
+      await rollups.ensureFresh(year);
+      final before = await _stamp(db);
+
+      final midnight =
+          withCalendar(calendarFor('Asia/Kolkata', boundaryHour: 0));
+      await midnight.ensureFresh(year);
+
+      expect(await _stamp(db), isNot(before),
+          reason: 'the cached rows were computed against a 4am day');
+    });
+
+    test('changing the timezone rebuilds the cache', () async {
+      await seed(doneInAugust: [1, 2]);
+      await rollups.ensureFresh(year);
+      final before = await _stamp(db);
+
+      await withCalendar(calendarFor('America/New_York')).ensureFresh(year);
+
+      expect(await _stamp(db), isNot(before),
+          reason: 'the same instants fall on different accounting days');
+    });
+
+    test('changing the week start rebuilds the cache', () async {
+      await seed(doneInAugust: [1, 2]);
+      await rollups.ensureFresh(year);
+      final before = await _stamp(db);
+
+      await withCalendar(
+        calendarFor('Asia/Kolkata', weekStartsOn: DateTime.sunday),
+      ).ensureFresh(year);
+
+      expect(await _stamp(db), isNot(before),
+          reason: 'every weekly target is scored over a different seven days');
+    });
+
+    test('an identical calendar does not rebuild', () async {
+      await seed(doneInAugust: [1, 2]);
+      await rollups.ensureFresh(year);
+      final before = await _stamp(db);
+
+      await withCalendar(calendarFor('Asia/Kolkata')).ensureFresh(year);
+
+      expect(await _stamp(db), before,
+          reason: 'the stamp must distinguish settings, not merely differ');
+    });
+
     test('a database written before the stamp existed is rebuilt', () async {
       await seed(doneInAugust: [1, 2]);
       await rollups.ensureFresh(year);
@@ -285,4 +354,12 @@ void main() {
       expect(marker, isNull);
     });
   });
+}
+
+/// The stored logic stamp, or null before one has been written.
+Future<String?> _stamp(AppDatabase db) async {
+  final row = await (db.select(db.settings)
+        ..where((t) => t.key.equals('rollup.logicVersion')))
+      .getSingleOrNull();
+  return row?.value;
 }

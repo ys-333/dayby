@@ -10,14 +10,17 @@ When two UX options exist, pick the one with fewer taps.
 
 ## Repository state
 
-No code yet — the repo holds only `docs/specs/2026-08-28-consistency-tracker-v1.md`,
-a ~3000-line product + engineering spec. Not a git repository yet.
+The app is built. All ten build phases and the whole redesign are done and
+tested; what remains needs a device or a product decision, not code. Start at
+`docs/PROGRESS.md` ("Start here"), then `docs/TODO.md` for the queue.
 
-The spec is the product source of truth: worked accounting examples, screen
-layouts, empty states, definition of done. Two caveats when reading it — it
+`docs/specs/2026-08-28-consistency-tracker-v1.md` is the ~3000-line product
+spec and still the product source of truth: worked accounting examples, screen
+layouts, empty states, definition of done. Three caveats when reading it — it
 predates the Flutter decision and prescribes a Kotlin/Compose/Room stack
-(ignore that; the stack below wins), and it calls the app "Consistency OS".
-Product rules and accounting semantics still apply as written.
+(ignore that; the stack below wins), it calls the app "Consistency OS", and the
+four screen boards in `docs/design/` supersede its screen layouts. Product
+rules and accounting semantics still apply as written.
 
 ## Stack
 - Flutter 3.47.0 (stable) / Dart 3.13.0 — installed at `~/development/flutter/bin`,
