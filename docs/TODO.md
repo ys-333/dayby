@@ -1,7 +1,12 @@
 # TODO — closing the redesign
 
-What is left to finish Riyaz's UI end to end, in the order the dependencies
-allow. `docs/PROGRESS.md` records what is **done and how it was verified**;
+**Every engineering item on this list is done as of 2026-08-30.** What is left
+is in two places and neither is code Claude can write: the device checks at the
+foot, and the one product decision in §4. The rest of the file is the record of
+what was built and what was decided against.
+
+What was left to finish Riyaz's UI end to end, in the order the dependencies
+allowed. `docs/PROGRESS.md` records what is **done and how it was verified**;
 this file records what is **next**. Update both in the same commit as the work.
 
 Status marks follow the ledger's rules:
@@ -15,8 +20,10 @@ Status marks follow the ledger's rules:
 All three were answered on 2026-08-30. Kept here as the record of what was
 decided and why, because each one closed off an alternative.
 
-- [x] **Icon vocabulary — replace the emoji.** Eight monochrome stroked glyphs,
-      as the Today board specifies. `Commitment.icon` is a `String` written by
+- [x] **Icon vocabulary — replace the emoji.** Built as 28 outlined Material
+      glyphs rather than the board's eight hand-drawn paths, on the argument
+      that they are indistinguishable at 22dp and cost no asset, no dependency
+      and no fixed box. `Commitment.icon` is a `String` written by
       the add screen and serialised into the backup format
       (`backup_codec.dart:49,181`), so this is a data migration over existing
       rows *and* old backups. See §2 for what that costs.
@@ -198,7 +205,12 @@ Claude never makes it.
 - [ ] **Feel check:** create and track in under 10 seconds on a real phone.
 - [ ] **Widget device check:** place it, confirm it renders, updates, and that
       tapping opens the app. The Kotlin has never executed.
-- [ ] Week grid and Insights on a device — built, never seen on hardware.
+- [ ] Week grid, Insights, the rebuilt Today and the rebuilt commitment detail
+      on a device — all built, none seen on hardware.
+- [ ] The glyph vocabulary on a real screen. Twenty-eight outlined Material
+      icons at 22dp were chosen over the board's hand-drawn paths on the
+      argument that they are indistinguishable at that size and cost nothing.
+      That argument has not been checked with eyes.
 - [ ] Decide whether light mode's near-black "strong" day reads as *best* or
       merely as *different*. Dark mode's equivalent is a light mint.
 
