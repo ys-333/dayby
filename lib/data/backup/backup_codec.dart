@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:riyaz/domain/model/commitment.dart';
+import 'package:riyaz/domain/model/commitment_icon.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/pause_period.dart';
 import 'package:riyaz/domain/model/schedule.dart';
@@ -178,12 +179,22 @@ class BackupCodec {
     ];
   }
 
+  /// Icons arriving as legacy emoji are normalised to glyph keys on the way
+  /// in, so a restore converges on the same vocabulary the schema v4 migration
+  /// produced. Anything the table does not recognise is kept verbatim — the
+  /// mark is the user's, and `CommitmentIcon` can still draw it.
+  ///
+  /// No format-version bump for this. An icon is a display value: an older
+  /// build meeting an unknown key draws the raw string and carries on, which
+  /// is a cosmetic surprise rather than a misread record. That is the line the
+  /// version number is for, and a nullable `pause.to` crossed it where this
+  /// does not.
   Commitment _readCommitment(Map<String, dynamic> m) => Commitment(
         id: _string(m['id'], 'commitment.id'),
         name: _string(m['name'], 'commitment.name'),
         startedOn: _date(m['startedOn'], 'commitment.startedOn'),
         description: m['description'] as String?,
-        icon: m['icon'] as String?,
+        icon: iconKeyFor(m['icon'] as String?) ?? m['icon'] as String?,
         categoryId: m['categoryId'] as String?,
         state: _enum(m['state'], CommitmentState.values, 'commitment.state'),
         archivedOn: m['archivedOn'] == null

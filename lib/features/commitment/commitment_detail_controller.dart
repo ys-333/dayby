@@ -196,6 +196,7 @@ class CommitmentActions {
     required String commitmentId,
     String? name,
     String? icon,
+    bool clearIcon = false,
     Frequency? frequency,
   }) =>
       repository.updateCommitment(
@@ -203,6 +204,7 @@ class CommitmentActions {
         on: today,
         name: name,
         icon: icon,
+        clearIcon: clearIcon,
         frequency: frequency,
       );
 }

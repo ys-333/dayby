@@ -66,7 +66,7 @@ void main() {
       frequency: const Frequency.daily(),
       startedOn: d(2026, 8, 1),
       nowUtc: clock.nowUtc(),
-      icon: '🏃',
+      icon: 'run',
     );
     for (final day in [1, 2, 3, 5, 8]) {
       await tracking.record(
@@ -97,7 +97,7 @@ void main() {
       expect(decoded.timezoneName, 'Asia/Kolkata');
       expect(decoded.dayBoundaryHour, 4);
       expect(decoded.commitments.single.name, 'Running');
-      expect(decoded.commitments.single.icon, '🏃');
+      expect(decoded.commitments.single.icon, 'run');
       expect(decoded.commitments.single.startedOn, d(2026, 8, 1));
       expect(decoded.events, hasLength(6));
       expect(

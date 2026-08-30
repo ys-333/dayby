@@ -54,24 +54,24 @@ class SyntheticSeeder {
   const SyntheticSeeder();
 
   static const List<_Template> _templates = [
-    _Template('Work on Otto', '💻', Frequency.daily(), 0.88),
-    _Template('Finmonk', '💼', Frequency.daily(), 0.82),
-    _Template('Running', '🏃', Frequency.daily(), 0.55),
-    _Template('Learning', '📚', Frequency.daily(), 0.7),
-    _Template('Reading', '📖', Frequency.daily(), 0.62),
-    _Template('Meditate', '🧘', Frequency.daily(), 0.44),
-    _Template('Gym', '🏋️', Frequency.timesPerWeek(target: 4), 0.6),
-    _Template('Swim', '🏊', Frequency.timesPerWeek(target: 2), 0.66),
-    _Template('Deep work', '🎯', Frequency.timesPerWeek(target: 5), 0.72),
-    _Template('Books', '📕', Frequency.timesPerMonth(target: 2), 0.58),
-    _Template('Call family', '📞', Frequency.timesPerWeek(target: 3), 0.75),
+    _Template('Work on Otto', 'code', Frequency.daily(), 0.88),
+    _Template('Finmonk', 'work', Frequency.daily(), 0.82),
+    _Template('Running', 'run', Frequency.daily(), 0.55),
+    _Template('Learning', 'study', Frequency.daily(), 0.7),
+    _Template('Reading', 'read', Frequency.daily(), 0.62),
+    _Template('Meditate', 'yoga', Frequency.daily(), 0.44),
+    _Template('Gym', 'gym', Frequency.timesPerWeek(target: 4), 0.6),
+    _Template('Swim', 'swim', Frequency.timesPerWeek(target: 2), 0.66),
+    _Template('Deep work', 'focus', Frequency.timesPerWeek(target: 5), 0.72),
+    _Template('Books', 'book', Frequency.timesPerMonth(target: 2), 0.58),
+    _Template('Call family', 'call', Frequency.timesPerWeek(target: 3), 0.75),
     _Template(
       'Weekday standup',
-      '🗒️',
+      'note',
       Frequency.weekdays(days: {1, 2, 3, 4, 5}),
       0.9,
     ),
-    _Template('Long walk', '🚶', Frequency.everyNDays(n: 3), 0.68),
+    _Template('Long walk', 'walk', Frequency.everyNDays(n: 3), 0.68),
   ];
 
   SyntheticDataset generate({

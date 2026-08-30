@@ -107,6 +107,7 @@ class _CommitmentDetailScreenState
           commitmentId: commitment.id,
           name: edit.name,
           icon: edit.icon,
+          clearIcon: edit.clearIcon,
           frequency: edit.frequency,
         );
         if (mounted) {
