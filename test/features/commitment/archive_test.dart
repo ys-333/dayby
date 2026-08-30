@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
@@ -60,6 +61,64 @@ void main() {
           reason: 'status on ${before[i].occurrence.span.start.iso} changed');
       expect(after[i].credit, before[i].credit);
     }
+  });
+
+  test('nothing is expected after the archive date', () async {
+    // The test that was missing. The original pair resolved only up to the
+    // archive date — the one window in which "archiving changes nothing"
+    // happens to be true. Seven weeks later it is not: a commitment whose
+    // schedule stays open keeps generating expected occurrences, and every one
+    // of them turns MISSED as its day closes. Measured at 49 of 49 before the
+    // fix, with archiving making no difference whatsoever.
+    final h2 = Harness(at: '2026-09-29T10:00:00+05:30');
+    addTearDown(h2.dispose);
+    final id = await h2.repo.createCommitment(
+      name: 'Running',
+      frequency: const Frequency.daily(),
+      startedOn: d(2026, 8, 1),
+      nowUtc: h2.nowUtc,
+    );
+    await h2.repo.archiveCommitment(id, d(2026, 8, 10));
+
+    final after = await h2.resolutionFor(
+      CivilDateRange(d(2026, 8, 11), d(2026, 9, 28)),
+      id,
+    );
+    expect(
+      after.where((r) => r.status == OccurrenceStatus.missed),
+      isEmpty,
+      reason: 'an archived commitment may never accrue another miss',
+    );
+  });
+
+  test('history before the archive date is still scored', () async {
+    // The other half: closing the schedule must not reach backwards.
+    final h2 = Harness(at: '2026-09-29T10:00:00+05:30');
+    addTearDown(h2.dispose);
+    final id = await h2.repo.createCommitment(
+      name: 'Running',
+      frequency: const Frequency.daily(),
+      startedOn: d(2026, 8, 1),
+      nowUtc: h2.nowUtc,
+    );
+    await h2.repo.record(
+      commitmentId: id,
+      date: d(2026, 8, 5),
+      kind: TrackingKind.done,
+      nowUtc: h2.nowUtc,
+      label: 'done',
+    );
+    await h2.repo.archiveCommitment(id, d(2026, 8, 10));
+
+    final before = await h2.resolutionFor(
+      CivilDateRange(d(2026, 8, 1), d(2026, 8, 10)),
+      id,
+    );
+    expect(before, hasLength(10), reason: 'the past stays expected');
+    expect(
+      before.where((r) => r.status == OccurrenceStatus.done),
+      hasLength(1),
+    );
   });
 
   test('archiving records the day and keeps every event', () async {
