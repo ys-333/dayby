@@ -14,10 +14,10 @@ the published page is a disposable copy.**
 | File | Board | Status |
 |------|-------|--------|
 | `Tokens.dc.html` | Design system | **implemented** — `lib/app/theme/` |
-| `Main.dc.html` | Today | **implemented** — structure; icons still emoji |
+| `Main.dc.html` | Today | **implemented** |
 | `Week.dc.html` | History / Week | **implemented** — period rows only |
 | `Insights.dc.html` | Insights (full scroll) | **partly** — the advice card |
-| `Detail.dc.html` | Commitment detail | not implemented |
+| `Detail.dc.html` | Commitment detail | **implemented** — actions and layout |
 
 `canvas.json` holds the layout and, more importantly, the **annotations** — one
 per board, stating what problem it solves. Read those before reading any
@@ -62,13 +62,21 @@ They were re-solved as a lightness ladder running in the direction the statuses
 mean. See `lib/app/theme/palette.dart` and `test/app/theme/palette_test.dart`,
 which holds the maths.
 
-**Three of the four screen boards are built.** The three "still open after the
-device pass" items in `../PROGRESS.md` — the FAB covering the last row, the
-~180px greeting, daily and period rows carrying identical weight — were the
-Today board's agenda, and all three are now answered in `lib/features/home/`.
-What remains unbuilt from that board is its **icon vocabulary**: the eight
-stroked glyphs are still emoji on screen, because `Commitment.icon` is stored
-and serialised, so swapping them is a data migration rather than a repaint.
+**All four screen boards are built**, and so is the icon vocabulary they share.
+The three "still open after the device pass" items in `../PROGRESS.md` — the
+FAB covering the last row, the ~180px greeting, daily and period rows carrying
+identical weight — were the Today board's agenda and are all answered in
+`lib/features/home/`.
+
+Two deliberate divergences from the markup, both recorded in `../PROGRESS.md`:
+the icons are 28 outlined Material glyphs rather than the board's eight
+hand-drawn paths (in the font already, no asset, and they scale with the user's
+text size), and the detail screen's subtitle names a period target but not a
+daily frequency, because `ResolvedHistory` carries no schedules and widening it
+for one label would cost three other screens.
+
+What is still unbuilt is the **Insights** board beyond its advice card, and the
+serif below.
 
 ## The six principles
 
