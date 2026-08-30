@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 355 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 374 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -57,7 +57,7 @@ has four tabs: Today, History, Insights, Settings.
 |------|------|
 | `docs/specs/2026-08-28-…md` | product spec (Kotlin-era; stack section is obsolete) |
 | `lib/domain/` | pure Dart engines — no Flutter, no Drift, injected `Clock` |
-| `lib/data/` | Drift schema v3, repositories, backup codec, seeder loader |
+| `lib/data/` | Drift schema v4, repositories, backup codec, seeder loader |
 | `lib/features/<name>/` | one folder per screen area |
 | `tool/check_arch.sh` | enforces domain purity + clock discipline |
 
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 355 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 374 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -949,3 +949,58 @@ a rollup is a cache, and rebuilding a few extra days costs less than one stale
 row that nothing ever corrects.
 
 `_resolutionVersion` did **not** move. The rule is unchanged; only the data is.
+
+### The emoji become glyphs
+
+The loudest finding of the device pass: full-colour emoji were the brightest
+thing on a deliberately muted screen, a row of saturated pictograms shouting
+over type chosen to be quiet. Logic verified: 374 tests pass (355 before, 19
+new). **Not feel verified.**
+
+**Schema v4 is data, not shape.** `commitments.icon` is the same TEXT column it
+always was; what changed is that it holds a key rather than a picture. The
+migration is a plain `UPDATE` per known emoji, so nothing in it can fail on a
+constraint.
+
+The mapping table is fourteen entries and is **exhaustive over what could
+actually be stored** — the seven add-screen templates plus the fourteen the
+synthetic seeder wrote — not a general emoji dictionary. U+FE0F is stripped
+before every lookup, in Dart and in the migration's SQL, because `🏋️` and `🏋`
+are different strings for one picture and the seeder happened to write the
+first. Anything outside the table is **left exactly as written**, and
+`CommitmentIcon` still draws it as text: replacing a user's own mark with the
+nearest glyph would be destroying something the migration had only guessed at.
+Three migration tests cover that split — recognised, variation-selected, and
+unknown.
+
+**No backup-format bump for this**, and the reason is worth recording next to
+the one that did bump. An icon is a display value: an older build meeting an
+unknown key draws the raw string and carries on. A nullable `pause.to` is a
+*record* an older build would misread. `currentVersion` is for the second kind.
+Import still normalises, so a restore converges on the vocabulary rather than
+reintroducing emoji.
+
+**Where the vocabulary lives is the part most likely to matter later.** The
+keys and the legacy mapping are in `lib/domain/model/commitment_icon.dart`
+because they are a data contract — the set of legal values for a stored field
+— and a data contract belongs beside the model it constrains, not in the widget
+that happens to draw it. `lib/app/glyphs.dart` holds only key → `IconData`, so
+redrawing the marks as bundled vectors later moves nothing stored.
+
+Twenty-eight outlined Material glyphs, chosen over hand-drawn SVG paths from
+the board: they are in the font already, cost no asset and no dependency, and
+scale with the user's text size, which a fixed-box SVG would not.
+
+**`GlyphPicker` replaced two free-text inputs, not one.** The add screen only
+ever offered seven template icons — but the edit sheet had a 64px `TextField`
+that accepted *any* string, which is how a row ends up wearing a hand-typed
+emoji that renders differently on every device and, since the value is
+serialised into the backup, keeps doing so forever. Both now write keys.
+
+Two things fell out of it. Clearing a mark needed a real `clearIcon` flag
+through `updateCommitment`, because a null `icon` already means "unchanged" and
+one value cannot carry two meanings — the old text field could not clear one
+either, so this is a fix rather than a regression avoided. And the edit sheet
+had to become scrollable with the picker collapsed by default: twenty-eight
+swatches open by default pushed Save off a short screen, which the existing
+frequency test caught immediately.

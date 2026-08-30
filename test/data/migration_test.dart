@@ -4,6 +4,7 @@ import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/model/frequency.dart';
+import 'package:riyaz/domain/model/commitment_icon.dart';
 import 'package:riyaz/domain/model/pause_period.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/model/commitment.dart';
@@ -115,14 +116,15 @@ void main() {
     // Opening runs the migration.
     final snapshot = await TrackingRepository(db).readAll();
 
-    expect(await _userVersion(db), 3, reason: 'schema version must advance');
+    expect(await _userVersion(db), 4, reason: 'schema version must advance');
 
     // Nothing lost. This is the whole point: the database holds years of
     // history that exists nowhere else, so a schema bump must never drop it.
     expect(snapshot.commitments, hasLength(1));
     final c = snapshot.commitments.single;
     expect(c.name, 'Running');
-    expect(c.icon, '🏃');
+    // v4 rewrote it: the stored emoji is now the glyph key it maps to.
+    expect(c.icon, 'run');
     expect(c.startedOn, d(2026, 8, 1));
     expect(c.state, CommitmentState.active);
 
@@ -181,7 +183,7 @@ void main() {
       startedOn: d(2026, 8, 1),
       nowUtc: DateTime.utc(2026, 8, 28),
     );
-    expect(await _userVersion(db), 3);
+    expect(await _userVersion(db), 4);
     expect((await TrackingRepository(db).readAll()).commitments, hasLength(1));
   });
 
@@ -191,7 +193,7 @@ void main() {
       addTearDown(db.close);
 
       final snapshot = await TrackingRepository(db).readAll();
-      expect(await _userVersion(db), 3);
+      expect(await _userVersion(db), 4);
 
       // SQLite cannot drop NOT NULL in place, so v3 recreates the table and
       // copies every row across. This is the assertion that the copy happened:
@@ -245,7 +247,84 @@ void main() {
       // Reopening an already-v3 database must not run the v3 step again.
       final again = AppDatabase(NativeDatabase.memory());
       addTearDown(again.close);
-      expect(await _userVersion(again), 3);
+      expect(await _userVersion(again), 4);
+    });
+  });
+
+  group('v3 to v4 — icons become glyph keys', () {
+    test('a recognised emoji is rewritten to its key', () async {
+      final db = _openMigratedFromV1();
+      addTearDown(db.close);
+
+      final c = (await TrackingRepository(db).readAll()).commitments.single;
+      expect(c.icon, 'run');
+      expect(iconKeyFor(c.icon), 'run');
+    });
+
+    test('an emoji carrying a variation selector is still recognised',
+        () async {
+      // `🏋️` and `🏋` are different strings for the same picture, and the
+      // seeder wrote the first while the lookup table holds the second. The
+      // migration strips U+FE0F in SQL for exactly this row.
+      final db = AppDatabase(
+        NativeDatabase.memory(setup: (raw) {
+          for (final ddl in _v2Schema) {
+            raw.execute(ddl);
+          }
+          raw.execute('PRAGMA user_version = 2');
+          raw.execute(
+            'INSERT INTO commitments (id, name, icon, started_on, state, '
+            'sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            ['c1', 'Gym', '🏋\uFE0F', d(2026, 8, 1).epochDay, 0, 0, 1756000000000],
+          );
+        }),
+      );
+      addTearDown(db.close);
+
+      expect((await TrackingRepository(db).readAll()).commitments.single.icon,
+          'gym');
+    });
+
+    test('a mark the table does not know is left exactly as written', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(setup: (raw) {
+          for (final ddl in _v2Schema) {
+            raw.execute(ddl);
+          }
+          raw.execute('PRAGMA user_version = 2');
+          raw.execute(
+            'INSERT INTO commitments (id, name, icon, started_on, state, '
+            'sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            ['c1', 'Odd', '🦖', d(2026, 8, 1).epochDay, 0, 0, 1756000000000],
+          );
+        }),
+      );
+      addTearDown(db.close);
+
+      // Replacing it with the nearest glyph would be destroying something the
+      // migration had only guessed at. It is kept, and still drawn.
+      expect((await TrackingRepository(db).readAll()).commitments.single.icon,
+          '🦖');
+    });
+
+    test('a commitment with no icon survives untouched', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(setup: (raw) {
+          for (final ddl in _v2Schema) {
+            raw.execute(ddl);
+          }
+          raw.execute('PRAGMA user_version = 2');
+          raw.execute(
+            'INSERT INTO commitments (id, name, started_on, state, '
+            'sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            ['c1', 'Plain', d(2026, 8, 1).epochDay, 0, 0, 1756000000000],
+          );
+        }),
+      );
+      addTearDown(db.close);
+
+      expect((await TrackingRepository(db).readAll()).commitments.single.icon,
+          isNull);
     });
   });
 }

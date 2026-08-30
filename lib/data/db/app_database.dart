@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 // signatures produced by the table type converters and enum columns.
 import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/model/commitment.dart';
+import 'package:riyaz/domain/model/commitment_icon.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
@@ -26,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +55,31 @@ class AppDatabase extends _$AppDatabase {
             // drops the old table and renames — so existing pauses keep their
             // ids and their dates, and only the constraint changes.
             await m.alterTable(TableMigration(pausePeriods));
+          }
+          if (from < 4) {
+            // v4 is data, not shape: `commitments.icon` stops holding an emoji
+            // and starts holding a glyph key. The column is the same TEXT it
+            // always was, so nothing here can fail on a constraint.
+            //
+            // Only values in `legacyEmojiIcons` are rewritten. A mark this
+            // build does not recognise — one typed into the old free-text
+            // field, or restored from a hand-edited backup — is left exactly
+            // as the user wrote it, and `CommitmentIcon` still draws it. A
+            // migration that replaced it with the nearest glyph would be
+            // destroying something it had only guessed at.
+            for (final entry in legacyEmojiIcons.entries) {
+              await customUpdate(
+                'UPDATE commitments SET icon = ? '
+                'WHERE REPLACE(icon, ?, ?) = ?',
+                variables: [
+                  Variable.withString(entry.value),
+                  Variable.withString(variationSelector),
+                  Variable.withString(''),
+                  Variable.withString(entry.key),
+                ],
+                updates: {commitments},
+              );
+            }
           }
         },
         beforeOpen: (details) async {

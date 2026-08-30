@@ -407,6 +407,11 @@ class TrackingRepository {
     required CivilDate on,
     String? name,
     String? icon,
+    /// Removes the icon rather than leaving it. A null [icon] means "not
+    /// changing this", which is the right default for a partial edit but
+    /// leaves no way to say "no mark at all" — so clearing gets its own flag
+    /// instead of overloading null with two meanings.
+    bool clearIcon = false,
     String? description,
     Frequency? frequency,
     int? targetMinutes,
@@ -414,12 +419,16 @@ class TrackingRepository {
     CivilDate? changedFrom;
 
     await _db.transaction(() async {
-      if (name != null || icon != null || description != null) {
+      if (name != null || icon != null || clearIcon || description != null) {
         await (_db.update(_db.commitments)
               ..where((t) => t.id.equals(commitmentId)))
             .write(CommitmentsCompanion(
           name: name == null ? const Value.absent() : Value(name),
-          icon: icon == null ? const Value.absent() : Value(icon),
+          icon: clearIcon
+              ? const Value(null)
+              : icon == null
+                  ? const Value.absent()
+                  : Value(icon),
           description: description == null
               ? const Value.absent()
               : Value(description),

@@ -84,11 +84,40 @@ already exist and have **zero callers**. The engines already honour both —
       one lead figure and a *dated* twelve-week grid. Cosmetic; do it after
       the three actions work.
 
-## 2. The icon migration — decided, not built
+## 2. The icon migration — done
 
-- [ ] Decide the mapping for rows that already hold an emoji.
-- [ ] Migrate the stored values; old backups must still import.
-- [ ] Replace the picker in `add_commitment_screen.dart`.
+Built 2026-08-30. Schema **v4**, data-only: `commitments.icon` stops holding an
+emoji and starts holding a glyph key.
+
+- [x] The mapping for rows that already hold an emoji — `unit`, `migration`.
+      Fourteen entries in `legacyEmojiIcons`, exhaustive over what could
+      actually be stored: the seven add-screen templates and the fourteen the
+      synthetic seeder wrote. Not a general emoji dictionary and not meant to
+      become one. U+FE0F is stripped before lookup, because `🏋️` and `🏋` are
+      different strings for one picture and the seeder wrote the first.
+      **Anything outside the table is left exactly as written** and still
+      renders — replacing a user's own mark with the nearest glyph would be
+      destroying something the migration had only guessed at.
+- [x] Migrate the stored values; old backups still import — `migration`,
+      `unit`. The v4 step is a plain `UPDATE` per known emoji, so nothing can
+      fail on a constraint. `_readCommitment` normalises on import too, so a
+      restore converges on the same vocabulary. **No format-version bump:** an
+      icon is a display value, and an older build meeting an unknown key draws
+      the raw string — a cosmetic surprise, not a misread record. That is the
+      line `currentVersion` is for, and a nullable `pause.to` crossed it where
+      this does not.
+- [x] Replace the picker — `widget`. `GlyphPicker` is a grid of the whole
+      vocabulary, and it replaces **two** free-text inputs: the add screen's
+      template-only icon and the edit sheet's 64px text field, which accepted
+      any string at all. Both now write keys. Clearing a mark needed a real
+      `clearIcon` flag through `updateCommitment`, since a null `icon` already
+      means "unchanged" and one value cannot carry two meanings.
+- [x] The vocabulary is 28 outlined Material glyphs — in the font already, no
+      asset, no dependency, and they scale with text size where a fixed-box
+      SVG would not. The keys live in `lib/domain/model/commitment_icon.dart`
+      because they are a **data contract**; how a key becomes a picture lives
+      in `lib/app/glyphs.dart` and can be swapped for bundled vectors later
+      without moving a single stored row.
 
 ## 3. Today — done
 

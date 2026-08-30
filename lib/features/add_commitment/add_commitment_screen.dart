@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riyaz/app/glyphs.dart';
 import 'package:riyaz/app/providers.dart';
+import 'package:riyaz/features/commitment/widgets/glyph_picker.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/features/commitment/widgets/frequency_picker.dart';
@@ -17,13 +19,13 @@ class _Template {
 }
 
 const List<_Template> _templates = [
-  _Template('💻', 'Code', Frequency.daily()),
-  _Template('🏃', 'Run', Frequency.daily()),
-  _Template('🏋️', 'Gym', Frequency.timesPerWeek(target: 4)),
-  _Template('📚', 'Read', Frequency.daily()),
-  _Template('🧘', 'Meditate', Frequency.daily()),
-  _Template('💼', 'Work', Frequency.daily()),
-  _Template('🚀', 'Startup', Frequency.daily()),
+  _Template('code', 'Code', Frequency.daily()),
+  _Template('run', 'Run', Frequency.daily()),
+  _Template('gym', 'Gym', Frequency.timesPerWeek(target: 4)),
+  _Template('read', 'Read', Frequency.daily()),
+  _Template('yoga', 'Meditate', Frequency.daily()),
+  _Template('work', 'Work', Frequency.daily()),
+  _Template('rocket', 'Startup', Frequency.daily()),
 ];
 
 /// Single-screen creation.
@@ -76,15 +78,8 @@ class _AddCommitmentScreenState extends ConsumerState<AddCommitmentScreen> {
             decoration: InputDecoration(
               hintText: 'Work on Otto',
               border: const OutlineInputBorder(),
-              prefixIcon: _icon == null
-                  ? null
-                  : Padding(
-                      padding: const EdgeInsets.only(left: 12, top: 12),
-                      child: Text(
-                        _icon!,
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ),
+              prefixIcon:
+                  _icon == null ? null : Icon(glyphFor(_icon), size: 20),
             ),
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) => _create(),
@@ -96,7 +91,7 @@ class _AddCommitmentScreenState extends ConsumerState<AddCommitmentScreen> {
             children: [
               for (final t in _templates)
                 ActionChip(
-                  avatar: Text(t.icon),
+                  avatar: Icon(glyphFor(t.icon), size: 18),
                   label: Text(t.name),
                   onPressed: () => setState(() {
                     _name.text = t.name;
@@ -104,6 +99,25 @@ class _AddCommitmentScreenState extends ConsumerState<AddCommitmentScreen> {
                     _frequency = t.frequency;
                   }),
                 ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Optional, and last of the three. Naming the thing is the point;
+          // choosing a mark for it is decoration, and the screen's promise is
+          // two or three taps for the common case.
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Icon'),
+            subtitle: Text(_icon == null ? 'None' : glyphLabelFor(_icon) ?? ''),
+            trailing: _icon == null ? null : Icon(glyphFor(_icon)),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: GlyphPicker(
+                  selected: _icon,
+                  onSelected: (key) => setState(() => _icon = key),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 24),

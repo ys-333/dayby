@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:riyaz/app/glyphs.dart';
+import 'package:riyaz/features/commitment/widgets/glyph_picker.dart';
 import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/domain/model/frequency.dart';
@@ -7,13 +9,22 @@ import 'frequency_picker.dart';
 
 /// What an edit changed. Null fields were not touched.
 class CommitmentEdit {
-  const CommitmentEdit({this.name, this.icon, this.frequency});
+  const CommitmentEdit({
+    this.name,
+    this.icon,
+    this.clearIcon = false,
+    this.frequency,
+  });
 
   final String? name;
   final String? icon;
   final Frequency? frequency;
 
-  bool get isEmpty => name == null && icon == null && frequency == null;
+  /// Removes the mark. Distinct from a null [icon], which means "unchanged".
+  final bool clearIcon;
+
+  bool get isEmpty =>
+      name == null && icon == null && !clearIcon && frequency == null;
 }
 
 /// Edits a commitment in a sheet rather than a screen.
@@ -35,16 +46,15 @@ class EditSheet extends StatefulWidget {
 }
 
 class _EditSheetState extends State<EditSheet> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.commitment.name);
-  late final TextEditingController _icon =
-      TextEditingController(text: widget.commitment.icon ?? '');
+  late final TextEditingController _name = TextEditingController(
+    text: widget.commitment.name,
+  );
+  late String? _icon = widget.commitment.icon;
   late Frequency _frequency = widget.frequency;
 
   @override
   void dispose() {
     _name.dispose();
-    _icon.dispose();
     super.dispose();
   }
 
@@ -61,92 +71,102 @@ class _EditSheetState extends State<EditSheet> {
         top: Insets.rowH,
         bottom: MediaQuery.viewInsetsOf(context).bottom + Insets.rowH,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Edit', style: theme.textTheme.titleLarge),
-          const SizedBox(height: Insets.rowH),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 64,
-                child: TextField(
-                  controller: _icon,
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                    labelText: 'Icon',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+      // Scrollable: the sheet is taller than a short screen with the keyboard
+      // up, and taller again at a large text scale. It has to give rather than
+      // overflow — the same treatment the today screen's action sheet needs.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Edit', style: theme.textTheme.titleLarge),
+            const SizedBox(height: Insets.rowH),
+            TextField(
+              controller: _name,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Name',
+                border: const OutlineInputBorder(),
+                prefixIcon: _icon == null
+                    ? null
+                    : Icon(glyphFor(_icon), size: 20),
               ),
-              const SizedBox(width: Insets.rowTrailingGap),
-              Expanded(
-                child: TextField(
-                  controller: _name,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: Insets.rowH),
+            // A grid, not the free-text field this replaces. That field took any
+            // string at all, which is how a row ends up wearing a hand-typed
+            // emoji that renders differently on every device — and, since the
+            // value is serialised into the backup, keeps doing so forever.
+            //
+            // Collapsed by default: most edits are a rename, and twenty-eight
+            // swatches open by default would push the frequency controls and the
+            // Save button off a short screen.
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Icon'),
+              subtitle: Text(
+                _icon == null ? 'None' : glyphLabelFor(_icon) ?? '',
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Insets.rowTrailingGap),
+                  child: GlyphPicker(
+                    selected: _icon,
+                    onSelected: (key) => setState(() => _icon = key),
                   ),
-                  onChanged: (_) => setState(() {}),
                 ),
+              ],
+            ),
+            const SizedBox(height: Insets.rowH),
+            Text('Frequency', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Insets.titleGap),
+            Text(frequencyLabel(_frequency), style: theme.textTheme.bodySmall),
+            const SizedBox(height: Insets.rowTrailingGap),
+            FrequencyPicker(
+              value: _frequency,
+              onChanged: (f) => setState(() => _frequency = f),
+            ),
+            if (_frequencyChanged) ...[
+              const SizedBox(height: Insets.rowTrailingGap),
+              // Said plainly, because the alternative is a user assuming their
+              // past consistency just moved — or worse, expecting it to.
+              Text(
+                'Takes effect today. Every day before today keeps the '
+                'frequency it was tracked under, so your history does not '
+                'change.',
+                style: theme.textTheme.bodySmall,
               ),
             ],
-          ),
-          const SizedBox(height: Insets.rowH),
-          Text('Frequency', style: theme.textTheme.titleMedium),
-          const SizedBox(height: Insets.titleGap),
-          Text(
-            frequencyLabel(_frequency),
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: Insets.rowTrailingGap),
-          FrequencyPicker(
-            value: _frequency,
-            onChanged: (f) => setState(() => _frequency = f),
-          ),
-          if (_frequencyChanged) ...[
-            const SizedBox(height: Insets.rowTrailingGap),
-            // Said plainly, because the alternative is a user assuming their
-            // past consistency just moved — or worse, expecting it to.
-            Text(
-              'Takes effect today. Every day before today keeps the '
-              'frequency it was tracked under, so your history does not '
-              'change.',
-              style: theme.textTheme.bodySmall,
+            const SizedBox(height: Insets.xl),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: _name.text.trim().isEmpty ? null : _save,
+                  child: const Text('Save'),
+                ),
+              ],
             ),
           ],
-          const SizedBox(height: Insets.xl),
-          Row(
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _name.text.trim().isEmpty ? null : _save,
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
   void _save() {
     final name = _name.text.trim();
-    final icon = _icon.text.trim();
+    final changed = _icon != widget.commitment.icon;
     Navigator.of(context).pop(
       CommitmentEdit(
         name: name == widget.commitment.name ? null : name,
-        icon: icon == (widget.commitment.icon ?? '')
-            ? null
-            : (icon.isEmpty ? null : icon),
+        icon: changed ? _icon : null,
+        clearIcon: changed && _icon == null,
         frequency: _frequencyChanged ? _frequency : null,
       ),
     );
