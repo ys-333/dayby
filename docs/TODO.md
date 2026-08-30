@@ -67,10 +67,15 @@ already exist and have **zero callers**. The engines already honour both —
       today. `TableMigration` rebuild — SQLite cannot drop NOT NULL in place.
       `_resolutionVersion` does **not** move: the rule is unchanged, only the
       data.
-- [ ] **Edit.** The only one missing end to end: there is no
-      `updateCommitment` on the repository at all. Name, icon, description.
-      Schedule edits must stay **effective-dated** — changing a frequency must
-      not alter historical consistency.
+- [x] **Edit** — `unit`, `widget`. `updateCommitment` is effective-dated: the
+      version in force closes the day before the change, a new one opens on
+      it, and the past keeps the rules it was lived under. Tests resolve
+      *across* the change date in both directions; verified non-vacuous by
+      forcing an in-place rewrite, which fails three of them.
+      The "amend or version when there is no history" question resolved
+      itself: a schedule already beginning on or after the change date **must**
+      be amended, because closing it the day before would leave a version
+      whose end precedes its start. Not a taste call after all.
 - [ ] **The board's layout.** Fifteen stats and thirty undated circles become
       one lead figure and a *dated* twelve-week grid. Cosmetic; do it after
       the three actions work.

@@ -10,6 +10,7 @@ import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/features/home/widgets/status_indicator.dart';
 
 import 'commitment_detail_controller.dart';
+import 'widgets/edit_sheet.dart';
 import 'widgets/trend_chart.dart';
 
 class CommitmentDetailScreen extends ConsumerStatefulWidget {
@@ -56,6 +57,10 @@ class _CommitmentDetailScreenState
             PopupMenuButton<_Action>(
               onSelected: (action) => _run(action, commitment),
               itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: _Action.edit,
+                  child: Text('Edit'),
+                ),
                 PopupMenuItem(
                   value: archived ? _Action.unarchive : _Action.archive,
                   child: Text(archived ? 'Unarchive' : 'Archive'),
@@ -77,6 +82,29 @@ class _CommitmentDetailScreenState
   Future<void> _run(_Action action, Commitment commitment) async {
     final actions = ref.read(commitmentActionsProvider);
     switch (action) {
+      case _Action.edit:
+        final frequency = await actions.currentFrequency(commitment.id);
+        if (frequency == null || !mounted) return;
+        final edit = await showModalBottomSheet<CommitmentEdit>(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) =>
+              EditSheet(commitment: commitment, frequency: frequency),
+        );
+        if (edit == null || edit.isEmpty || !mounted) return;
+        await actions.edit(
+          commitmentId: commitment.id,
+          name: edit.name,
+          icon: edit.icon,
+          frequency: edit.frequency,
+        );
+        if (mounted) {
+          _say(
+            edit.frequency == null
+                ? 'Saved.'
+                : 'Saved. Your history is unchanged.',
+          );
+        }
       case _Action.archive:
         await actions.archive(commitment.id);
         if (mounted) {
@@ -92,13 +120,15 @@ class _CommitmentDetailScreenState
     }
   }
 
-  void _say(String message, {required Future<void> Function() undo}) {
+  void _say(String message, {Future<void> Function()? undo}) {
     final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
     final controller = messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         duration: _undoWindow,
-        action: SnackBarAction(label: 'UNDO', onPressed: undo),
+        action: undo == null
+            ? null
+            : SnackBarAction(label: 'UNDO', onPressed: undo),
       ),
     );
     final timer = Timer(_undoWindow, () {
@@ -110,7 +140,7 @@ class _CommitmentDetailScreenState
   }
 }
 
-enum _Action { archive, unarchive }
+enum _Action { edit, archive, unarchive }
 
 /// Says the commitment is out of the daily list, and that nothing was lost.
 ///

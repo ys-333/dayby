@@ -5,6 +5,7 @@ import 'package:riyaz/domain/accounting/resolved_occurrence.dart';
 import 'package:riyaz/domain/analytics/analytics_engine.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/model/commitment.dart';
+import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 
@@ -109,6 +110,39 @@ class CommitmentActions {
   /// Puts it back in the list and reopens the schedule archiving closed.
   Future<void> unarchive(String commitmentId) =>
       repository.unarchiveCommitment(commitmentId);
+
+  /// The frequency in force today.
+  ///
+  /// Read on the gesture rather than carried in [CommitmentDetail]: the detail
+  /// stream reports resolved history, which has no need of the schedule, and
+  /// widening it for one dialog would make every screen that watches it pay
+  /// for a field only this sheet reads.
+  Future<Frequency?> currentFrequency(String commitmentId) async {
+    final snapshot = await repository.read(CivilDateRange(today, today));
+    for (final schedule in snapshot.schedulesFor(commitmentId)) {
+      final startedYet = schedule.effectiveFrom <= today;
+      final stillOpen =
+          schedule.effectiveTo == null || today <= schedule.effectiveTo!;
+      if (startedYet && stillOpen) return schedule.frequency;
+    }
+    return null;
+  }
+
+  /// Applies an edit. A frequency change takes effect **today**, leaving every
+  /// past day judged by the rules it was actually lived under.
+  Future<void> edit({
+    required String commitmentId,
+    String? name,
+    String? icon,
+    Frequency? frequency,
+  }) =>
+      repository.updateCommitment(
+        commitmentId: commitmentId,
+        on: today,
+        name: name,
+        icon: icon,
+        frequency: frequency,
+      );
 }
 
 @riverpod

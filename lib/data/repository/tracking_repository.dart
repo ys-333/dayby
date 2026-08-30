@@ -303,6 +303,101 @@ class TrackingRepository {
     await onWrite?.call(from);
   }
 
+  /// Edits a commitment. Fields left null are untouched.
+  ///
+  /// Name, icon and description are plain writes — they describe the
+  /// commitment, not what it expected of you, so changing them cannot alter a
+  /// single historical number.
+  ///
+  /// [frequency] is different, and is the reason this method is careful.
+  /// The **schedule is the source of truth for what was expected**, so
+  /// rewriting the current schedule row in place would retroactively change
+  /// what every past day was measured against: switch a year-old daily habit
+  /// to 3×/week and every one of those days would silently re-resolve against
+  /// a target it was never held to. Consistency for last March would move.
+  ///
+  /// So a frequency change is **effective-dated**: the version in force is
+  /// closed the day before [on], and a new one opens on [on]. The past keeps
+  /// the rules it was actually lived under.
+  ///
+  /// The one case that amends in place rather than versioning is a schedule
+  /// that already begins on or after [on] — editing twice in a day, or editing
+  /// a commitment created today. Closing that one at `on - 1` would leave a
+  /// version whose end precedes its start: an empty, meaningless row that
+  /// every reader would then have to know to skip. Amending is not the tidier
+  /// choice there, it is the only correct one.
+  Future<void> updateCommitment({
+    required String commitmentId,
+    required CivilDate on,
+    String? name,
+    String? icon,
+    String? description,
+    Frequency? frequency,
+    int? targetMinutes,
+  }) async {
+    CivilDate? changedFrom;
+
+    await _db.transaction(() async {
+      if (name != null || icon != null || description != null) {
+        await (_db.update(_db.commitments)
+              ..where((t) => t.id.equals(commitmentId)))
+            .write(CommitmentsCompanion(
+          name: name == null ? const Value.absent() : Value(name),
+          icon: icon == null ? const Value.absent() : Value(icon),
+          description: description == null
+              ? const Value.absent()
+              : Value(description),
+        ));
+      }
+      if (frequency == null) return;
+
+      final open = await (_db.select(_db.commitmentSchedules)
+            ..where((t) =>
+                t.commitmentId.equals(commitmentId) & t.effectiveTo.isNull()))
+          .getSingleOrNull();
+      if (open == null) return; // archived: its schedule is closed on purpose.
+
+      final columns = frequencyToColumns(frequency);
+
+      if (open.effectiveFrom >= on) {
+        await (_db.update(_db.commitmentSchedules)
+              ..where((t) => t.id.equals(open.id)))
+            .write(CommitmentSchedulesCompanion(
+          frequencyType: Value(columns.type),
+          target: Value(columns.target),
+          daysOfWeekMask: Value(columns.daysMask),
+          everyNDays: Value(columns.everyN),
+          targetMinutes: Value(targetMinutes),
+        ));
+        changedFrom = open.effectiveFrom;
+        return;
+      }
+
+      await (_db.update(_db.commitmentSchedules)
+            ..where((t) => t.id.equals(open.id)))
+          .write(CommitmentSchedulesCompanion(
+        effectiveTo: Value(on.plusDays(-1)),
+      ));
+      await _db
+          .into(_db.commitmentSchedules)
+          .insert(CommitmentSchedulesCompanion.insert(
+            id: _ids.next('s'),
+            commitmentId: commitmentId,
+            effectiveFrom: on,
+            frequencyType: columns.type,
+            target: Value(columns.target),
+            daysOfWeekMask: Value(columns.daysMask),
+            everyNDays: Value(columns.everyN),
+            targetMinutes: Value(targetMinutes),
+          ));
+      changedFrom = on;
+    });
+
+    // Only a schedule change moves any number, and only from its effective
+    // date forward. A rename invalidates nothing.
+    if (changedFrom != null) await onWrite?.call(changedFrom!);
+  }
+
   /// Archives on [on], and closes the schedule on the same day.
   ///
   /// Closing the schedule is the part that matters. `lib/domain/` reads
