@@ -87,7 +87,13 @@ class RiyazWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.progress_label, json.optString("progressLabel"))
 
                 if (json.optBoolean("isEmpty", false)) {
-                    views.setTextViewText(R.id.row_0, "Nothing to track yet")
+                    // Dart decides the wording: "nothing tracked" and "nothing
+                    // due today" are different facts, and telling them apart
+                    // needs the accounting rules this class deliberately lacks.
+                    views.setTextViewText(
+                        R.id.row_0,
+                        json.optString("emptyLabel", "Nothing to track yet")
+                    )
                     for (i in 1 until ROW_IDS.size) {
                         views.setTextViewText(ROW_IDS[i], "")
                     }

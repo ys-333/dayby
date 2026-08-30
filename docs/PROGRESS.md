@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 434 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 436 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -90,7 +90,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 434 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 436 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1386,3 +1386,40 @@ What *was* verified on device: the method channel executes end to end for the
 first time, `AppWidgetManager` is reachable, the pin path degrades to an
 accurate message rather than appearing to do nothing, and the provider
 registers with the system carrying its declared size, update period and layout.
+
+### The widget was quietly inflating the day
+
+Found by reading the payload the app had actually written to the device, which
+is a thing worth doing more often — it is the only way to see what a surface
+says when the surface itself cannot be drawn.
+
+The widget counted **every** commitment, daily and period alike. With the
+seeded year it read `12/18` on a day the app read `6 of 8`. Ten of those
+eighteen were weekly and monthly targets: not due today, not missable today. A
+glance at the home screen said six things outstanding when two were — the exact
+misconception the daily/period split exists to prevent, leaking out of the app
+onto the launcher.
+
+Both the count and the list are daily-only now. **Filtered rather than
+reordered**, because five text rows cannot express two categories: the app
+keeps them apart with a section header, a different row shape and a "never
+late" label, while the widget has one line of text per row, and in a flat list
+"Gym  2/3" is indistinguishable from something that wants doing this afternoon.
+The widget answers one question — *what is left today* — and a weekly target is
+not an answer to it.
+
+That created a silence the old payload could not express, so `emptyLabel` is a
+field now: someone whose targets are all weekly has plenty tracked and nothing
+due, and saying "Nothing to track yet" to them would be a small lie. Dart
+decides the wording, like every other string on that surface, because telling
+the two silences apart is an accounting question.
+
+Verified on the device by reading the stored payload back: `7/7` with eight
+daily rows and no targets, against the app's own `TODAY 7 OF 7` on the same
+day. Before the fix the same data produced `12/18`.
+
+**This also verified the write path end to end** — Dart computes, the method
+channel carries it, `MainActivity` stores it, and the JSON on disk is correct.
+That leaves `render()` and `applyPayload()` as the only widget code that has
+never run, and they need a launcher that hosts widgets, which this phone's does
+not.

@@ -59,11 +59,28 @@ class WidgetPayload {
     required this.progressLabel,
     required this.rows,
     required this.isEmpty,
+    required this.emptyLabel,
   });
 
+  /// **Daily commitments only.** Week and month targets are not on the widget.
+  ///
+  /// They used to be, both in the list and in the count, and it made the
+  /// widget quietly lie. With eighteen commitments it read `12/18` on a day
+  /// the app read `6 of 8` — because ten of those eighteen were weekly targets
+  /// that were not due today and could not be missed today. A glance said six
+  /// things outstanding when two were. That is precisely the misconception the
+  /// daily/period split exists to prevent, leaking onto the home screen.
+  ///
+  /// Filtering rather than reordering, because five text rows cannot express
+  /// two categories. The app has a section header, a different row shape and a
+  /// "never late" label to keep them apart; the widget has a line of text. Put
+  /// both kinds in one flat list and "Gym  2/3" is indistinguishable from a
+  /// daily row that wants doing now. The widget answers one question — *what
+  /// is left today* — and a weekly target is not an answer to it.
   factory WidgetPayload.fromView(TodayView view, String dateLabel) {
+    final daily = view.daily;
     final rows = [
-      for (final item in view.items)
+      for (final item in daily)
         WidgetRow(
           commitmentId: item.commitment.id,
           label: item.commitment.name,
@@ -74,17 +91,34 @@ class WidgetPayload {
 
     return WidgetPayload(
       dateLabel: dateLabel,
-      // An empty day shows a dash, not "0%" — nothing expected is not failure.
-      progressLabel: view.total == 0 ? '—' : '${view.completed}/${view.total}',
+      // The same figure the Today screen's section header shows, so a glance
+      // at the home screen and a glance at the app never disagree. A dash when
+      // nothing is expected: nothing due is not nothing achieved.
+      progressLabel: view.dailyExpected == 0
+          ? '—'
+          : '${view.dailyDone}/${view.dailyExpected}',
       rows: rows,
-      isEmpty: view.isEmpty,
+      isEmpty: rows.isEmpty,
+      // Two different silences, and conflating them would be a small lie in
+      // each direction. Someone whose targets are all weekly has plenty
+      // tracked and nothing due; someone with no commitments has neither.
+      emptyLabel: view.isEmpty
+          ? 'Nothing to track yet'
+          : 'Nothing due today',
     );
   }
 
   final String dateLabel;
   final String progressLabel;
   final List<WidgetRow> rows;
+
+  /// No daily rows to draw — which is not the same as no commitments.
   final bool isEmpty;
+
+  /// What to say instead of a list. Decided here, like every other string the
+  /// widget shows, because the reason for the silence is an accounting
+  /// question and the native side does no accounting.
+  final String emptyLabel;
 
   /// The same glyph vocabulary the in-app indicator uses, so the widget and
   /// the app never disagree about what a state looks like.
@@ -102,6 +136,7 @@ class WidgetPayload {
         'dateLabel': dateLabel,
         'progressLabel': progressLabel,
         'isEmpty': isEmpty,
+        'emptyLabel': emptyLabel,
         'rows': [for (final r in rows) r.toJson()],
       });
 }

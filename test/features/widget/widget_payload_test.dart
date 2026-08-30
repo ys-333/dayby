@@ -71,13 +71,8 @@ void main() {
         date: d(2026, 8, 28),
         items: [
           item(name: 'Running', status: OccurrenceStatus.done, completed: 1),
-          item(
-            name: 'Gym',
-            status: OccurrenceStatus.pending,
-            completed: 2,
-            target: 4,
-            period: true,
-          ),
+          item(name: 'Water', status: OccurrenceStatus.pending, completed: 2,
+              target: 4),
         ],
       );
       final payload = WidgetPayload.fromView(view, 'Friday, Aug 28');
@@ -89,8 +84,53 @@ void main() {
       expect(payload.rows[0].glyph, '✓');
       expect(payload.rows[0].detail, '', reason: 'a simple row has no counter');
 
-      // A period row carries its progress, not a bare tick.
+      // A countable row carries its progress, not a bare tick.
       expect(payload.rows[1].detail, '2/4');
+    });
+
+    test('week and month targets are not on the widget at all', () {
+      // The bug this replaces: the widget counted period targets alongside
+      // daily ones, so eighteen commitments read "12/18" on a day the app read
+      // "6 of 8". Ten of those were weekly targets that were not due today and
+      // could not be missed today — a glance said six outstanding when two
+      // were. Exactly the misconception the daily/period split exists to
+      // prevent, leaking onto the home screen.
+      final view = TodayView(
+        date: d(2026, 8, 28),
+        items: [
+          item(name: 'Running', status: OccurrenceStatus.done, completed: 1),
+          item(name: 'Reading', status: OccurrenceStatus.pending),
+          item(name: 'Gym', status: OccurrenceStatus.pending, completed: 2,
+              target: 4, period: true),
+          item(name: 'Swim', status: OccurrenceStatus.done, completed: 2,
+              target: 2, period: true),
+        ],
+      );
+      final payload = WidgetPayload.fromView(view, 'x');
+
+      expect(payload.progressLabel, '1/2',
+          reason: 'the figure the Today screen shows, not one counting '
+              'targets that cannot be late today');
+      expect(payload.rows.map((r) => r.label), ['Running', 'Reading']);
+    });
+
+    test('all-weekly commitments read as nothing due, not nothing tracked', () {
+      // Two different silences. Someone whose targets are all weekly has
+      // plenty tracked and nothing due today; conflating that with an empty
+      // app would be a small lie in each direction.
+      final view = TodayView(
+        date: d(2026, 8, 28),
+        items: [
+          item(name: 'Gym', status: OccurrenceStatus.pending, completed: 2,
+              target: 4, period: true),
+        ],
+      );
+      final payload = WidgetPayload.fromView(view, 'x');
+
+      expect(payload.isEmpty, isTrue);
+      expect(payload.rows, isEmpty);
+      expect(payload.emptyLabel, 'Nothing due today');
+      expect(payload.progressLabel, '—');
     });
 
     test('an empty day shows a dash, never zero percent', () {
@@ -101,6 +141,7 @@ void main() {
       expect(payload.progressLabel, '—');
       expect(payload.isEmpty, isTrue);
       expect(payload.rows, isEmpty);
+      expect(payload.emptyLabel, 'Nothing to track yet');
     });
 
     test('skipped rows leave the progress denominator', () {
@@ -156,7 +197,7 @@ void main() {
       // These keys are the contract with RiyazWidgetProvider.kt. Changing one
       // without changing the Kotlin leaves a silently blank widget.
       expect(json.keys.toSet(),
-          {'dateLabel', 'progressLabel', 'isEmpty', 'rows'});
+          {'dateLabel', 'progressLabel', 'isEmpty', 'emptyLabel', 'rows'});
       final row = (json['rows'] as List).single as Map<String, dynamic>;
       expect(row.keys.toSet(), {'id', 'label', 'glyph', 'detail'});
       expect(row['label'], 'Running');

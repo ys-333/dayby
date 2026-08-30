@@ -18,6 +18,7 @@ void main() {
     progressLabel: '1/2',
     rows: [],
     isEmpty: false,
+    emptyLabel: 'Nothing due today',
   );
 
   tearDown(() => messenger.setMockMethodCallHandler(channel, null));
