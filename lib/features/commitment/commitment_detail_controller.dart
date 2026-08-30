@@ -3,14 +3,75 @@ import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/accounting/resolved_occurrence.dart';
 import 'package:riyaz/domain/analytics/analytics_engine.dart';
+import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/pause_period.dart';
+import 'package:riyaz/domain/recurrence/expected_occurrence.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 
 part 'commitment_detail_controller.g.dart';
+
+/// Columns in the twelve-week grid.
+///
+/// Twelve rather than the year the screen already resolves: at 390dp a
+/// fifty-two-week grid gives each day about four pixels, which is a texture
+/// rather than a record. Twelve weeks is a season — long enough to show a
+/// rhythm, short enough that a single day is still a thing you can point at.
+const int _gridWeeks = 12;
+
+/// The newest note in [resolved], or null if the user has never written one.
+DatedNote? _latestNote(List<ResolvedOccurrence> resolved) {
+  ResolvedOccurrence? newest;
+  for (final r in resolved) {
+    final note = r.note;
+    if (note == null || note.isEmpty) continue;
+    if (newest == null || r.occurrence.span.end > newest.occurrence.span.end) {
+      newest = r;
+    }
+  }
+  return newest == null
+      ? null
+      : DatedNote(text: newest.note!, date: newest.occurrence.span.end);
+}
+
+/// One day in the twelve-week grid.
+class GridDay {
+  const GridDay({
+    required this.date,
+    required this.status,
+    required this.creditedToPeriod,
+    required this.isFuture,
+  });
+
+  final CivilDate date;
+
+  /// Null when the schedule expected nothing that day — before the commitment
+  /// started, on an off day, or inside a pause.
+  final OccurrenceStatus? status;
+
+  /// A completion for a **period** target landed on this day.
+  ///
+  /// Drawn as a mark of its own, never as a status. A 4x-a-week target has no
+  /// opinion about which days it is met on, so painting a credited day as
+  /// "done" would claim that day was owed — the exact misconception the period
+  /// model exists to prevent. Same rule, and the same two shapes, as the week
+  /// grid on the history screen.
+  final bool creditedToPeriod;
+
+  /// Not lived yet. Never drawn as a failure.
+  final bool isFuture;
+}
+
+/// The most recent note the user wrote, and the day it belongs to.
+class DatedNote {
+  const DatedNote({required this.text, required this.date});
+
+  final String text;
+  final CivilDate date;
+}
 
 /// Everything the detail screen shows, computed once from one resolution pass.
 class CommitmentDetail {
@@ -22,7 +83,11 @@ class CommitmentDetail {
     required this.last90,
     required this.thisYear,
     required this.trend,
-    required this.recent,
+    required this.grid,
+    required this.gridStart,
+    required this.isPeriod,
+    required this.periodLabel,
+    required this.latestNote,
   });
 
   final Commitment commitment;
@@ -33,8 +98,27 @@ class CommitmentDetail {
   final ConsistencySummary thisYear;
   final List<TrendPoint> trend;
 
-  /// Most recent occurrences, newest last, for the strip at the bottom.
-  final List<ResolvedOccurrence> recent;
+  /// Twelve whole weeks ending with the current one, oldest first, aligned so
+  /// that every seventh entry starts a new week.
+  ///
+  /// Replaces the thirty undated circles the screen used to end with. Those
+  /// showed a sequence with no dates on it, which meant a gap could not be
+  /// placed and therefore could not be learned from. A dated grid answers
+  /// "when do I drop this?" — which is the only question the strip was ever
+  /// being asked.
+  final List<GridDay> grid;
+
+  /// First day of [grid] — a week start, so the grid's rows are weekdays.
+  final CivilDate gridStart;
+
+  /// True when this commitment is scored over a week or a month rather than a
+  /// day. Changes what the grid's marks *mean*, so it travels with them.
+  final bool isPeriod;
+
+  /// "a week" / "a month" for a period commitment, else null.
+  final String? periodLabel;
+
+  final DatedNote? latestNote;
 }
 
 @riverpod
@@ -67,6 +151,43 @@ Stream<CommitmentDetail?> commitmentDetail(Ref ref, String commitmentId) {
     final month = calendar.periodContaining(PeriodScope.monthly, today);
     final trendRange = CivilDateRange(today.plusDays(-89), today);
 
+    // Twelve whole weeks, the current one last. Anchored to the week start so
+    // every row of the rendered grid is one weekday — a grid anchored to
+    // "today minus 83" would put a different weekday in each row and destroy
+    // the one pattern it exists to show.
+    final gridStart = calendar
+        .startOfWeek(today)
+        .plusDays(-7 * (_gridWeeks - 1));
+
+    final byDay = <int, ResolvedOccurrence>{};
+    final credited = <int>{};
+    PeriodOccurrence? anyPeriod;
+
+    for (final r in resolved) {
+      final occurrence = r.occurrence;
+      if (occurrence is PeriodOccurrence) {
+        anyPeriod = occurrence;
+        for (final day in r.creditedDays) {
+          credited.add(day.epochDay);
+        }
+      } else {
+        byDay[occurrence.span.start.epochDay] = r;
+      }
+    }
+
+    final grid = [
+      for (var i = 0; i < _gridWeeks * 7; i++)
+        () {
+          final date = gridStart.plusDays(i);
+          return GridDay(
+            date: date,
+            status: byDay[date.epochDay]?.status,
+            creditedToPeriod: credited.contains(date.epochDay),
+            isFuture: date > today,
+          );
+        }(),
+    ];
+
     return CommitmentDetail(
       commitment: commitment,
       streaks: analytics.streaks(resolved),
@@ -78,7 +199,15 @@ Stream<CommitmentDetail?> commitmentDetail(Ref ref, String commitmentId) {
         resolved: resolved,
         range: trendRange,
       ),
-      recent: since(today.plusDays(-34)),
+      grid: grid,
+      gridStart: gridStart,
+      isPeriod: anyPeriod != null,
+      periodLabel: switch (anyPeriod?.scope) {
+        PeriodScope.weekly => 'a week',
+        PeriodScope.monthly => 'a month',
+        _ => null,
+      },
+      latestNote: _latestNote(resolved),
     );
   });
 }

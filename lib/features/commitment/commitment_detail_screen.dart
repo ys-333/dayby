@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/formatting.dart';
+import 'package:riyaz/app/glyphs.dart';
 import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/app/theme/tokens.dart';
+import 'package:riyaz/app/theme/type_roles.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/app/providers.dart';
-import 'package:riyaz/features/home/widgets/status_indicator.dart';
 
 import 'commitment_detail_controller.dart';
 import 'widgets/edit_sheet.dart';
+import 'widgets/twelve_week_grid.dart';
 import 'widgets/trend_chart.dart';
 
 class CommitmentDetailScreen extends ConsumerStatefulWidget {
@@ -59,10 +61,7 @@ class _CommitmentDetailScreenState
             PopupMenuButton<_Action>(
               onSelected: (action) => _run(action, commitment),
               itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: _Action.edit,
-                  child: Text('Edit'),
-                ),
+                const PopupMenuItem(value: _Action.edit, child: Text('Edit')),
                 // Not offered on an archived commitment: its schedule is
                 // already closed, so there is nothing left to suspend and
                 // "Paused" on top of "Archived" would be two words for one
@@ -120,29 +119,37 @@ class _CommitmentDetailScreenState
       case _Action.archive:
         await actions.archive(commitment.id);
         if (mounted) {
-          _say('Archived. Its history is kept.',
-              undo: () => actions.unarchive(commitment.id));
+          _say(
+            'Archived. Its history is kept.',
+            undo: () => actions.unarchive(commitment.id),
+          );
         }
       case _Action.unarchive:
         await actions.unarchive(commitment.id);
         if (mounted) {
-          _say('Back in your daily list.',
-              undo: () => actions.archive(commitment.id));
+          _say(
+            'Back in your daily list.',
+            undo: () => actions.archive(commitment.id),
+          );
         }
       case _Action.pause:
         final from = ref.read(todayProvider);
         await actions.pause(commitment.id);
         if (mounted) {
-          _say('Paused. These days will not count as missed.',
-              undo: () => actions.cancelPause(commitment.id, from));
+          _say(
+            'Paused. These days will not count as missed.',
+            undo: () => actions.cancelPause(commitment.id, from),
+          );
         }
       case _Action.resume:
         final from = await actions.resume(commitment.id);
         if (mounted) {
-          _say('Resumed from today.',
-              undo: from == null
-                  ? null
-                  : () => actions.restorePause(commitment.id, from));
+          _say(
+            'Resumed from today.',
+            undo: from == null
+                ? null
+                : () => actions.restorePause(commitment.id, from),
+          );
         }
     }
   }
@@ -259,7 +266,7 @@ class _ArchivedBanner extends StatelessWidget {
               archivedOn == null
                   ? 'Archived. Its history is kept and still counts below.'
                   : 'Archived $archivedOn. Its history is kept and still '
-                      'counts below.',
+                        'counts below.',
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -276,61 +283,47 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final streaks = detail.streaks;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      padding: const EdgeInsets.fromLTRB(
+        Insets.rowH,
+        Insets.titleGap * 4,
+        Insets.rowH,
+        Insets.xl + Insets.rowH,
+      ),
       children: [
         if (detail.commitment.state == CommitmentState.archived)
           _ArchivedBanner(archivedOn: detail.commitment.archivedOn?.iso)
         else
           _PausedBanner(commitmentId: detail.commitment.id),
-        Row(
-          children: [
-            if (detail.commitment.icon != null) ...[
-              Text(
-                detail.commitment.icon!,
-                style: const TextStyle(fontSize: 28),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    detail.commitment.name,
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  Text(
-                    'Started ${dayLabel(detail.commitment.startedOn)}, '
-                    '${detail.commitment.startedOn.year}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
+        _Heading(detail: detail),
+        const SizedBox(height: Insets.sectionGap),
+        _LeadFigure(detail: detail),
+        const SizedBox(height: Insets.xl),
+        const _SectionTitle('Last twelve weeks'),
+        TwelveWeekGrid(detail: detail),
+        const SizedBox(height: Insets.xl),
         const _SectionTitle('Momentum'),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _Stat(
-              label: 'Current streak',
-              value: '${streaks.current}',
-              unit: streaks.current == 1 ? 'day' : 'days',
+              label: 'A typical run',
+              value: streaks.averageStreak == 0
+                  ? '—'
+                  : streaks.averageStreak.toStringAsFixed(
+                      streaks.averageStreak % 1 == 0 ? 0 : 1,
+                    ),
+              unit: streaks.averageStreak == 0 ? '' : 'days',
             ),
             _Stat(
-              label: 'Longest',
+              label: 'Your best run',
               value: '${streaks.longest}',
               unit: streaks.longest == 1 ? 'day' : 'days',
             ),
             _Stat(
-              label: 'Avg recovery',
+              label: 'To come back',
               // Null until a lapse has actually been recovered from. Showing
               // "0 days" would claim a resilience that has not been shown.
               value: streaks.averageRecoveryDays == null
@@ -340,43 +333,252 @@ class _Body extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        const _SectionTitle('Consistency'),
+        const SizedBox(height: Insets.xl),
+        // The secondary windows, deliberately small. The board's argument
+        // holds: fifteen equal-weight figures is a wall nobody reads, and the
+        // one that matters is already the largest thing on the screen.
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Stat.percent('This week', detail.thisWeek),
-            _Stat.percent('This month', detail.thisMonth),
-            _Stat.percent('90 days', detail.last90),
-            _Stat.percent('This year', detail.thisYear),
+            _SmallStat.percent('This week', detail.thisWeek),
+            _SmallStat.percent('90 days', detail.last90),
+            _SmallStat.percent('This year', detail.thisYear),
+            _SmallStat(
+              label: 'Skipped',
+              value: '${detail.thisYear.skipped}',
+              // Surfaced separately rather than hidden, and never scored: a
+              // skip is a decision the user made, and the count of them is
+              // information about the year, not a deduction from it.
+              dim: true,
+            ),
           ],
         ),
-        const SizedBox(height: 24),
-        const _SectionTitle('Performance'),
-        Row(
-          children: [
-            _Stat(label: 'Done', value: '${detail.thisYear.done}'),
-            _Stat(label: 'Partial', value: '${detail.thisYear.partial}'),
-            _Stat(label: 'Missed', value: '${detail.thisYear.missed}'),
-            _Stat(label: 'Skipped', value: '${detail.thisYear.skipped}'),
-          ],
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: Insets.xl),
         const _SectionTitle('Rolling 7-day consistency'),
         TrendChart(points: detail.trend),
-        const SizedBox(height: 24),
-        const _SectionTitle('Recent'),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final r in detail.recent)
-              Tooltip(
-                message: '${r.occurrence.span.end.iso}: ${r.status.name}',
-                child: StatusIndicator(status: r.status, size: 18),
+        if (detail.latestNote != null) ...[
+          const SizedBox(height: Insets.xl),
+          const _SectionTitle('Latest note'),
+          _Note(note: detail.latestNote!),
+        ],
+      ],
+    );
+  }
+}
+
+/// The commitment's mark, name and how long it has been running.
+class _Heading extends StatelessWidget {
+  const _Heading({required this.detail});
+
+  final CommitmentDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final glyph = glyphFor(detail.commitment.icon);
+
+    // Derived from the occurrences the screen already resolved rather than
+    // read from the schedule. `ResolvedHistory` carries no schedules, and
+    // widening a type shared with history, analytics and insights for one
+    // subtitle would make three screens pay for a label only this one shows.
+    // So the line states what can be said truthfully from what is here: the
+    // period for a period target, and the start date always.
+    final since =
+        'since ${fullDayLabel(detail.commitment.startedOn)} '
+        '${detail.commitment.startedOn.year}';
+    final subtitle = detail.periodLabel == null
+        ? since.replaceRange(0, 1, 'S')
+        : 'A target every ${detail.periodLabel} · $since';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (glyph != null) ...[
+          Icon(glyph, size: 26, color: context.statusColors.done),
+          const SizedBox(width: Insets.rowTrailingGap),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                detail.commitment.name,
+                style: theme.textTheme.headlineSmall,
               ),
-          ],
+              const SizedBox(height: Insets.titleGap),
+              Text(
+                subtitle,
+                style: theme.textTheme.footnote?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// One number, large, with the sentence that makes it mean something.
+///
+/// The screen used to open with fifteen figures at the same weight, which is a
+/// wall rather than an answer. This is the one the user came for, and the line
+/// under it says what the denominator actually was — a percentage with no
+/// stated base is a number you cannot argue with or learn from.
+class _LeadFigure extends StatelessWidget {
+  const _LeadFigure({required this.detail});
+
+  final CommitmentDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final summary = detail.thisMonth;
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final days = summary.eligible;
+
+    return Semantics(
+      container: true,
+      label: summary.percent == null
+          ? 'No consistency this month yet'
+          : '${summary.percent} percent this month, over $days '
+                '${detail.isPeriod ? 'closed targets' : 'scheduled days'}',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                summary.percent == null ? '—' : '${summary.percent}%',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: Insets.rowTrailingGap),
+              Flexible(
+                child: Text(
+                  'this month',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.titleGap * 2),
+          Text(
+            // An em dash rather than 0%: a month with nothing settled yet has
+            // no consistency, and rendering that as zero is a verdict on a
+            // month the user has not finished.
+            days == 0
+                ? 'Nothing has settled this month yet'
+                : detail.isPeriod
+                ? 'Of $days closed ${days == 1 ? 'target' : 'targets'} '
+                      'this month'
+                : 'Of $days scheduled '
+                      '${days == 1 ? 'day' : 'days'} this month',
+            style: theme.textTheme.footnote?.copyWith(color: muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The most recent thing the user wrote, quoted.
+///
+/// Their own words about their own week are worth more than another figure,
+/// and until now the only way to see one was to long-press the row it belonged
+/// to and open a dialog.
+class _Note extends StatelessWidget {
+  const _Note({required this.note});
+
+  final DatedNote note;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // `IntrinsicHeight` so the rule beside the quote is exactly as tall as the
+    // quote. A stretched Row inside a ListView asks for infinite height, and a
+    // fixed bar height would be wrong for every note but one.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 2,
+            decoration: BoxDecoration(
+              color: context.statusColors.done,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: Insets.rowTrailingGap),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(note.text, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: Insets.titleGap),
+                Text(
+                  fullDayLabel(note.date),
+                  style: theme.textTheme.footnote?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A secondary figure: small, quiet, and never competing with the lead.
+class _SmallStat extends StatelessWidget {
+  const _SmallStat({
+    required this.label,
+    required this.value,
+    this.dim = false,
+  });
+
+  factory _SmallStat.percent(String label, ConsistencySummary summary) =>
+      _SmallStat(
+        label: label,
+        value: summary.percent == null ? '—' : '${summary.percent}%',
+      );
+
+  final String label;
+  final String value;
+
+  /// True for a count that is information rather than performance.
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: dim ? muted : null,
+            ),
+          ),
+          const SizedBox(height: Insets.titleGap),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(color: muted),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -388,25 +590,19 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Text(
-          text.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.1,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        letterSpacing: 1.1,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value, this.unit});
-
-  /// Renders a summary as a percentage, or an em dash when nothing is eligible.
-  factory _Stat.percent(String label, ConsistencySummary summary) => _Stat(
-        label: label,
-        value: summary.percent == null ? '—' : '${summary.percent}%',
-      );
 
   final String label;
   final String value;
