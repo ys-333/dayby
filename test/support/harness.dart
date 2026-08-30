@@ -14,7 +14,10 @@ import 'package:riyaz/data/repository/rollup_repository.dart';
 import 'package:riyaz/domain/accounting/accounting_engine.dart';
 import 'package:riyaz/domain/recurrence/recurrence_engine.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
+import 'package:riyaz/domain/accounting/resolved_occurrence.dart';
+import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
+import 'package:riyaz/features/commitment/commitment_detail_controller.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 /// Shared widget-test harness: a real in-memory database plus a frozen clock,
@@ -55,23 +58,41 @@ class Harness {
     await tester.pumpAndSettle();
   }
 
+  /// The same engine graph the app wires up, for tests that need to resolve
+  /// history directly rather than through a screen.
+  ResolutionService resolution() {
+    final calendar = AccountingCalendar(zone: tz.getLocation('Asia/Kolkata'));
+    return ResolutionService(
+      repository: repo,
+      accounting: AccountingEngine(
+        calendar: calendar,
+        recurrence: RecurrenceEngine(calendar),
+      ),
+      clock: clock,
+    );
+  }
+
+  /// The accounting day this harness's frozen clock is inside.
+  CivilDate get today =>
+      AccountingCalendar(zone: tz.getLocation('Asia/Kolkata')).today(clock);
+
+  /// One commitment's resolved history over [range].
+  Future<List<ResolvedOccurrence>> resolutionFor(
+    CivilDateRange range,
+    String commitmentId,
+  ) async =>
+      (await resolution().read(range)).forCommitment(commitmentId);
+
+  /// The writes the detail screen makes, against this harness's database.
+  CommitmentActions actions() =>
+      CommitmentActions(repository: repo, today: today);
+
   /// Exports through the same service the UI uses.
   Future<String> backupJson() {
-    final calendar = AccountingCalendar(zone: tz.getLocation('Asia/Kolkata'));
     return BackupService(
       database: db,
       repository: repo,
-      rollups: RollupRepository(
-        db,
-        ResolutionService(
-          repository: repo,
-          accounting: AccountingEngine(
-            calendar: calendar,
-            recurrence: RecurrenceEngine(calendar),
-          ),
-          clock: clock,
-        ),
-      ),
+      rollups: RollupRepository(db, resolution()),
       clock: clock,
       settings: const AppSettings(),
     ).exportJson();

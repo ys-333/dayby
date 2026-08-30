@@ -672,7 +672,8 @@ decisions:
 
 - [x] **Insights: the load warning reads as an error** — `widget`. See below.
 - [x] **History: period rows break the week grid** — `unit`, `widget`. See below.
-- [ ] **Detail: three actions are missing entirely.** No edit, no pause, no
+- [~] **Detail: three actions are missing entirely.** Archive and unarchive
+      are built (below). Pause and edit are not. No edit, no pause, no
       archive anywhere in `commitment_detail_screen.dart`. The board also
       replaces the stat wall with one lead figure and a *dated* twelve-week
       grid. This is missing function, not only layout.
@@ -731,3 +732,33 @@ insights test, and crediting every day fails both week-grid tests.
 Its sample data counts skipped days in the denominator, which contradicts the
 rule that skipped is excluded entirely. That is a real accounting question, not
 a layout one, so it is left rather than guessed at.
+
+### Archive, and what it must not touch
+
+The detail screen had no way to archive, pause or edit — a user who abandoned
+a commitment had no exit from a list that only grows. Archive and unarchive
+are now on the overflow menu, with undo and a banner stating that history is
+kept, because "archived" is a word most people read as "deleted".
+
+The data layer was further along than it looked: `setState()` already existed
+and had never been called from anywhere.
+
+**What the tests pin is that archiving changes nothing about the past.**
+`archive_test.dart` resolves a fortnight of history, archives, resolves again
+and asserts every status and every credit is identical. Verified non-vacuous:
+flipping `includeArchived` to false — the exact silent failure, where a year
+of history stops counting and nothing throws — fails it.
+
+No rollup invalidation, and that is deliberate rather than forgotten:
+`includeArchived` defaults to true and nothing in `lib/` passes false, so
+archiving resolves no occurrence differently and there is nothing stale to
+rebuild.
+
+Logic verified: analyze clean, check_arch clean, 302 tests pass (297 before,
+5 new). Not feel verified.
+
+Two traps found while building it, recorded in `docs/TODO.md` before pause is
+attempted: `CommitmentState.paused` is referenced nowhere — the engines read
+`PausePeriods` alone, so wiring Pause to it would look correct and silently do
+nothing — and `PausePeriod.to` is non-null, so an open-ended pause needs a
+schema decision.

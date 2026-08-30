@@ -39,12 +39,20 @@ The data layer is further along than it looks:
 already exist and have **zero callers**. The engines already honour both —
 `resolution.dart:86`, `today_controller.dart:45`, `week_grid.dart:78`.
 
-- [ ] **Archive and unarchive.** Wire `setState()` to the overflow menu.
-      Archiving must preserve history and never rewrite a past record; set
-      `archivedOn`. Needs a test that history and consistency are unchanged
-      across an archive.
+- [x] **Archive and unarchive** — `unit`, `widget`. Overflow menu, undo, and a
+      banner that says history is kept. `archive_test.dart` asserts every
+      resolved status and credit is byte-identical across an archive; checked
+      non-vacuous by making archived history drop out of resolution.
 - [ ] **Pause and resume.** Wire `pauseCommitment()`. Paused days are
       `NOT_EXPECTED`, never misses — assert that in the same commit.
+      **Two traps found while building archive.** `CommitmentState.paused` has
+      *zero* references in the whole codebase — the engines read `PausePeriods`
+      exclusively (`recurrence_engine.dart:34`, `accounting_engine.dart:162`).
+      Wiring Pause to `setState(paused)` would look right and silently do
+      nothing, leaving the engine still expecting occurrences and marking them
+      MISSED. And `PausePeriod.to` is non-null, so "pause until I resume" needs
+      either a sentinel far-future date or a nullable column — a **schema v3
+      migration**. Decide which before building.
 - [ ] **Edit.** The only one missing end to end: there is no
       `updateCommitment` on the repository at all. Name, icon, description.
       Schedule edits must stay **effective-dated** — changing a frequency must
