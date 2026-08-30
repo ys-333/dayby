@@ -2,6 +2,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/model/commitment.dart';
+import 'package:riyaz/domain/analytics/consistency_summary.dart';
+import 'package:riyaz/domain/analytics/day_band.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
@@ -64,6 +66,64 @@ Stream<TodayView> todayView(Ref ref, CivilDate date) {
     }
 
     return TodayView(date: date, items: items);
+  });
+}
+
+/// One cell in the recent-days strip above the list.
+class StripDay {
+  const StripDay({
+    required this.date,
+    required this.band,
+    required this.isAnchor,
+  });
+
+  final CivilDate date;
+  final DayBand band;
+
+  /// The day the screen is currently showing. Ringed rather than recoloured —
+  /// "where you are" is not a status.
+  final bool isAnchor;
+}
+
+/// How many days the strip shows.
+///
+/// Fourteen: two whole weeks, so a weekly rhythm is visible rather than
+/// implied, and still wide enough per cell to read on a 390dp screen.
+const int recentStripLength = 14;
+
+/// The last [recentStripLength] days ending at [anchor], banded.
+///
+/// This is the screen's only backward-looking element, and it replaces the
+/// percentage bar the redesign removed. A bar scored the day in progress; a
+/// strip shows the days already lived and leaves today as an outline. Same
+/// pixels, opposite message.
+@riverpod
+Stream<List<StripDay>> recentDays(Ref ref, CivilDate anchor) {
+  final analytics = ref.watch(analyticsEngineProvider);
+  final today = ref.watch(todayProvider);
+  final range = CivilDateRange(
+    anchor.plusDays(-(recentStripLength - 1)),
+    anchor,
+  );
+
+  return ref.watch(resolutionServiceProvider).watch(range).map((history) {
+    final byDay = analytics.bucketed(
+      resolved: history.all,
+      bucketOf: (date) => date,
+    );
+    const bands = DayBands.standard;
+
+    return [
+      for (final date in range.dates)
+        StripDay(
+          date: date,
+          band: bands.bandFor(
+            byDay[date] ?? ConsistencySummary.empty,
+            isFuture: date > today,
+          ),
+          isAnchor: date == anchor,
+        ),
+    ];
   });
 }
 

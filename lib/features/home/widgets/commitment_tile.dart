@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/app/theme/type_roles.dart';
-import 'package:riyaz/domain/accounting/occurrence_status.dart';
 
 import '../today_view.dart';
+import 'commitment_icon.dart';
 import 'status_indicator.dart';
 
-/// A single row: tap to advance it, long-press for everything else.
+/// A daily row: tap to advance it, long-press for everything else.
 ///
 /// The tap target is the whole row rather than the indicator, because the core
 /// promise is a sub-ten-second daily pass and hunting for a small circle is
 /// what breaks that.
+///
+/// Period targets do **not** come here — see [PeriodTile]. Splitting the two
+/// is principle 3 of the design system: a 3×/week target cannot be behind on a
+/// Tuesday, so it must not sit in a list of things that can.
 class CommitmentTile extends StatelessWidget {
   const CommitmentTile({
     required this.item,
@@ -27,19 +31,18 @@ class CommitmentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final done = item.status == OccurrenceStatus.done;
-    final muted = item.status == OccurrenceStatus.skipped ||
-        item.status == OccurrenceStatus.paused;
+    final status = context.statusColors;
+    final recessive = item.isDone || item.isExcluded;
 
-    final subtitle = item.isPeriod
-        ? '${item.completed} / ${item.target} ${item.periodLabel ?? ''}'.trim()
-        : item.target > 1
-            ? '${item.completed} / ${item.target}'
-            : _statusWord(item.status);
+    // Skipped and paused rows are *not* struck through. A skip is a decision
+    // the user made, not a deletion, and strikethrough is the typography of
+    // something cancelled or wrong.
+    final meta = _metaLine;
 
     return Semantics(
       button: true,
-      label: '${item.commitment.name}, $subtitle',
+      label: _semanticLabel,
+      excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -52,31 +55,27 @@ class CommitmentTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (item.commitment.icon != null) ...[
-                Text(
-                  item.commitment.icon!,
-                  style: const TextStyle(fontSize: 22),
-                ),
-                const SizedBox(width: Insets.rowGap),
-              ],
+              CommitmentIcon(icon: item.commitment.icon, dimmed: recessive),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       item.commitment.name,
                       style: theme.textTheme.rowTitle?.copyWith(
-                        decoration: muted ? TextDecoration.lineThrough : null,
-                        color: muted ? context.statusColors.muted : null,
+                        color: recessive ? status.muted : null,
                       ),
                     ),
-                    const SizedBox(height: Insets.titleGap),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.rowMeta?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    if (meta != null) ...[
+                      const SizedBox(height: Insets.titleGap),
+                      Text(
+                        meta,
+                        style: theme.textTheme.rowMeta?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -84,7 +83,7 @@ class CommitmentTile extends StatelessWidget {
               // A countable row that is not yet finished shows "+", because
               // its tap adds one rather than completing outright. The
               // affordance has to match what the tap actually does.
-              if (item.isCountable && !done && !muted)
+              if (item.isCountable && !item.isDone && !item.isExcluded)
                 Semantics(
                   label: 'Add one',
                   child: Icon(
@@ -101,13 +100,26 @@ class CommitmentTile extends StatelessWidget {
     );
   }
 
-  String _statusWord(OccurrenceStatus status) => switch (status) {
-        OccurrenceStatus.done => 'Done',
-        OccurrenceStatus.partial => 'Partial',
-        OccurrenceStatus.missed => 'Missed',
-        OccurrenceStatus.skipped => 'Skipped',
-        OccurrenceStatus.paused => 'Paused',
-        OccurrenceStatus.notScheduled => 'Not scheduled',
-        OccurrenceStatus.pending => 'Not done yet',
-      };
+  /// The second line, or null when the row says everything on one.
+  ///
+  /// A pending row shows nothing here: an open ring already says "not yet",
+  /// and a column of "Not done yet" under every untouched commitment was the
+  /// noise the redesign removed. What survives is the states a mark cannot
+  /// carry — a tally, a status the user chose, and their own note.
+  String? get _metaLine {
+    final parts = [
+      if (item.target > 1) '${item.completed} / ${item.target}',
+      if (item.statusCaption != null) item.statusCaption!,
+      if (item.note != null && item.note!.isNotEmpty) item.note!,
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  String get _semanticLabel {
+    final state = item.statusCaption ?? (item.isDone ? 'Done' : 'Not done yet');
+    final meta = _metaLine;
+    return meta == null
+        ? '${item.commitment.name}, $state'
+        : '${item.commitment.name}, $state, $meta';
+  }
 }

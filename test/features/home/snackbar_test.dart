@@ -2,6 +2,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riyaz/domain/accounting/occurrence_status.dart';
+import 'package:riyaz/features/home/widgets/commitment_tile.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
@@ -63,11 +65,11 @@ void main() {
 
     await tester.tap(find.text('Running'));
     await tester.pumpAndSettle();
-    expect(find.text('Done'), findsOneWidget);
+    expect(_status(tester), OccurrenceStatus.done);
 
     await tester.tap(find.text('UNDO'));
     await tester.pumpAndSettle();
-    expect(find.text('Not done yet'), findsOneWidget);
+    expect(_status(tester), OccurrenceStatus.pending);
   });
 
   testWidgets('a second action does not leave the first bar stranded',
@@ -84,3 +86,8 @@ void main() {
     expect(find.text('UNDO'), findsNothing);
   });
 }
+
+/// The single row's resolved status. A daily row no longer captions itself —
+/// see `home_screen_test.dart` — so the state is read off the model.
+OccurrenceStatus _status(WidgetTester tester) =>
+    tester.widget<CommitmentTile>(find.byType(CommitmentTile)).item.status;

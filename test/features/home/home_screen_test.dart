@@ -5,11 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
+import 'package:riyaz/domain/accounting/occurrence_status.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
 import 'package:riyaz/features/home/home_screen.dart';
 import 'package:riyaz/features/home/widgets/commitment_tile.dart';
+import 'package:riyaz/features/home/widgets/period_tile.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 
 import '../../support/dates.dart';
@@ -57,6 +59,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The row's resolved status, read off the model the tile was handed.
+  ///
+  /// The redesign removed the "Done" / "Not done yet" caption from a daily
+  /// row — an open ring and a filled tick already say it, and a column of
+  /// captions under every untouched commitment was the noise the device pass
+  /// objected to. So these tests assert the state, not a string that is
+  /// deliberately no longer on screen.
+  OccurrenceStatus statusOf(WidgetTester tester, String name) => tester
+      .widgetList<CommitmentTile>(find.byType(CommitmentTile))
+      .firstWhere((t) => t.item.commitment.name == name)
+      .item
+      .status;
+
   group('rendering', () {
     testWidgets('an empty database shows the empty state', (tester) async {
       await pumpHome(tester);
@@ -68,9 +83,18 @@ void main() {
       await pumpHome(tester);
 
       expect(find.text('Running'), findsOneWidget);
-      expect(find.text('Not done yet'), findsOneWidget);
-      expect(find.text('0 / 1'), findsOneWidget);
-      expect(find.text('0%'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.pending);
+      expect(find.text('Not done yet'), findsNothing,
+          reason: 'the open ring says it; the caption was noise');
+    });
+
+    testWidgets('a daily commitment sits under the Today group',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.text('0 OF 1'), findsOneWidget);
     });
 
     testWidgets('a weekly target reads as a period, not a day', (tester) async {
@@ -81,44 +105,137 @@ void main() {
       );
       await pumpHome(tester);
 
-      expect(find.text('0 / 4 this week'), findsOneWidget);
-      // A period row offers "+" because a tap adds one rather than finishing.
-      // Scoped to the tile: the add FAB shares the icon.
-      expect(
-        find.descendant(
-          of: find.byType(CommitmentTile),
-          matching: find.byIcon(Icons.add_rounded),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(PeriodTile), findsOneWidget);
+      expect(find.byType(CommitmentTile), findsNothing);
+      expect(find.text('0 of 4'), findsOneWidget);
     });
 
-    testWidgets('the header shows today and disables tomorrow', (tester) async {
+    testWidgets('period targets never share a group with daily rows',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await addCommitment(
+        name: 'Gym',
+        frequency: const Frequency.timesPerWeek(target: 4),
+      );
+      await pumpHome(tester);
+
+      // Principle 3: a 3x-a-week target cannot be late on a Tuesday, so it
+      // must not sit in a list of things that can.
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.text('THIS WEEK'), findsOneWidget);
+      expect(find.text('NEVER LATE'), findsOneWidget);
+    });
+
+    testWidgets('a monthly target names its own period', (tester) async {
+      await addCommitment(
+        name: 'Deep clean',
+        frequency: const Frequency.timesPerMonth(target: 2),
+      );
+      await pumpHome(tester);
+
+      expect(find.text('THIS MONTH'), findsOneWidget);
+    });
+
+    testWidgets('the day bar shows today and disables tomorrow',
+        (tester) async {
       await addCommitment(name: 'Running');
       await pumpHome(tester);
 
       expect(find.text('Today'), findsOneWidget);
-      expect(find.text('Friday, Aug 28'), findsOneWidget);
 
       final next = tester.widget<IconButton>(
         find.widgetWithIcon(IconButton, Icons.chevron_right_rounded),
       );
       expect(next.onPressed, isNull, reason: 'the future cannot be recorded');
     });
+
+    testWidgets('add lives in the day bar, not over the last row',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      expect(find.byType(FloatingActionButton), findsNothing,
+          reason: 'the FAB covered the last row on device');
+      expect(
+        find.widgetWithIcon(IconButton, Icons.add_rounded),
+        findsOneWidget,
+      );
+    });
   });
 
-  group('one-tap tracking', () {
-    testWidgets('tapping a row marks it done and updates progress',
+  group('the headline counts down', () {
+    testWidgets('an untouched day names what is left, never a score',
         (tester) async {
+      await addCommitment(name: 'Running');
+      await addCommitment(name: 'Reading', icon: '📚');
+      await pumpHome(tester);
+
+      expect(find.text('Two left today'), findsOneWidget);
+      expect(find.text('0%'), findsNothing,
+          reason: 'a percentage of a day still being lived is a verdict');
+    });
+
+    testWidgets('finishing everything reaches zero', (tester) async {
       await addCommitment(name: 'Running');
       await pumpHome(tester);
 
       await tester.tap(find.text('Running'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Done'), findsOneWidget);
-      expect(find.text('100%'), findsOneWidget);
-      expect(find.text('1 / 1'), findsOneWidget);
+      expect(find.text('Done for today'), findsOneWidget);
+    });
+
+    testWidgets('a period target is never part of what is left today',
+        (tester) async {
+      await addCommitment(
+        name: 'Gym',
+        frequency: const Frequency.timesPerWeek(target: 4),
+      );
+      await pumpHome(tester);
+
+      expect(find.text('Nothing due today'), findsOneWidget);
+    });
+
+    testWidgets('a skipped row is not something left to do', (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+      expect(find.text('One left today'), findsOneWidget);
+
+      await tester.longPress(find.text('Running'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing due today'), findsOneWidget);
+    });
+
+    testWidgets('a closed day tallies instead of counting down',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      await tester.tap(find.byIcon(Icons.chevron_left_rounded));
+      await tester.pumpAndSettle();
+
+      // The no-scoring rule protects a day the user can still act on. Once it
+      // is over, the count is a fact rather than a judgement delivered early.
+      expect(find.text('0 of 1 done'), findsOneWidget);
+    });
+  });
+
+  group('one-tap tracking', () {
+    testWidgets('tapping a row marks it done and updates the headline',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await addCommitment(name: 'Reading', icon: '📚');
+      await pumpHome(tester);
+
+      await tester.tap(find.text('Running'));
+      await tester.pumpAndSettle();
+
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.done);
+      expect(find.text('One left today'), findsOneWidget);
+      expect(find.text('1 OF 2'), findsOneWidget);
     });
 
     testWidgets('every tap offers an undo', (tester) async {
@@ -138,13 +255,13 @@ void main() {
 
       await tester.tap(find.text('Running'));
       await tester.pumpAndSettle();
-      expect(find.text('Done'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.done);
 
       await tester.tap(find.text('UNDO'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Not done yet'), findsOneWidget);
-      expect(find.text('0%'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.pending);
+      expect(find.text('One left today'), findsOneWidget);
     });
 
     testWidgets('tapping a finished row un-ticks it', (tester) async {
@@ -153,11 +270,11 @@ void main() {
 
       await tester.tap(find.text('Running'));
       await tester.pumpAndSettle();
-      expect(find.text('Done'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.done);
 
       await tester.tap(find.text('Running'));
       await tester.pumpAndSettle();
-      expect(find.text('Not done yet'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.pending);
     });
 
     testWidgets('a period row increments instead of completing',
@@ -170,11 +287,11 @@ void main() {
 
       await tester.tap(find.text('Gym'));
       await tester.pumpAndSettle();
-      expect(find.text('1 / 4 this week'), findsOneWidget);
+      expect(find.text('1 of 4'), findsOneWidget);
 
       await tester.tap(find.text('Gym'));
       await tester.pumpAndSettle();
-      expect(find.text('2 / 4 this week'), findsOneWidget);
+      expect(find.text('2 of 4'), findsOneWidget);
     });
 
     testWidgets('an open period behind target never reads as missed',
@@ -189,7 +306,23 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Missed'), findsNothing);
-      expect(find.text('1 / 4 this week'), findsOneWidget);
+      expect(find.text('1 of 4'), findsOneWidget);
+    });
+
+    testWidgets('a met target is said out loud rather than just disappearing',
+        (tester) async {
+      await addCommitment(
+        name: 'Gym',
+        frequency: const Frequency.timesPerWeek(target: 2),
+      );
+      await pumpHome(tester);
+
+      await tester.tap(find.text('Gym'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gym'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gym is done for the week'), findsOneWidget);
     });
   });
 
@@ -211,23 +344,24 @@ void main() {
       );
     });
 
-    testWidgets('skipping removes the row from the progress denominator',
+    testWidgets('skipping leaves the group tally, and stays visible',
         (tester) async {
       await addCommitment(name: 'Running');
       await addCommitment(name: 'Reading', icon: '📚');
       await pumpHome(tester);
 
-      // Two rows, nothing done.
-      expect(find.text('0 / 2'), findsOneWidget);
+      expect(find.text('0 OF 2'), findsOneWidget);
 
       await tester.longPress(find.text('Running'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
 
-      // Skipped rows leave the denominator, exactly as they leave consistency.
-      expect(find.text('0 / 1'), findsOneWidget);
+      // Skipped rows leave the denominator, exactly as they leave consistency
+      // — but principle 6 says they are shown, never hidden.
+      expect(find.text('0 OF 1'), findsOneWidget);
       expect(find.text('Skipped'), findsOneWidget);
+      expect(find.text('Running'), findsOneWidget);
     });
 
     testWidgets('marking partial shows partial, not done', (tester) async {
@@ -240,6 +374,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Running marked partial'), findsOneWidget);
+      // The row still reads pending, and that is the engine being right rather
+      // than the screen being wrong: an open window is PENDING, and a partial
+      // recorded at ten in the morning must not close a day the user can still
+      // finish. The caption appears once the day is over.
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.pending);
+    });
+
+    testWidgets('a partial on a closed day is captioned as one',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      await tester.tap(find.byIcon(Icons.chevron_left_rounded));
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text('Running'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mark partial'));
+      await tester.pumpAndSettle();
+
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.partial);
+      expect(find.text('Partial'), findsOneWidget);
     });
   });
 
@@ -266,13 +421,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Running'));
       await tester.pumpAndSettle();
-      expect(find.text('Done'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.done);
 
       // Back to today: still untouched.
       await tester.tap(find.byIcon(Icons.chevron_right_rounded));
       await tester.pumpAndSettle();
       expect(find.text('Today'), findsOneWidget);
-      expect(find.text('Not done yet'), findsOneWidget);
+      expect(statusOf(tester, 'Running'), OccurrenceStatus.pending);
     });
   });
 
@@ -296,8 +451,7 @@ void main() {
       expect(find.text('Add note'), findsOneWidget);
     });
 
-    testWidgets('a saved note survives and reopens for editing',
-        (tester) async {
+    testWidgets('a saved note survives and shows on the row', (tester) async {
       await addCommitment(name: 'Running');
       await pumpHome(tester);
 
@@ -313,12 +467,26 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      // Reopen: the note is prefilled, so it round-tripped through storage.
+      // The note is the row's second line now, not a thing you have to reopen
+      // a dialog to see.
+      expect(
+        find.descendant(
+          of: find.byType(CommitmentTile),
+          matching: find.text('Ran 5k in the rain'),
+        ),
+        findsOneWidget,
+      );
+
+      // Reopen: still prefilled, so it round-tripped through storage.
       await tester.longPress(find.text('Running'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Add note'));
       await tester.pumpAndSettle();
-      expect(find.text('Ran 5k in the rain'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller?.text,
+        'Ran 5k in the rain',
+      );
     });
   });
 }

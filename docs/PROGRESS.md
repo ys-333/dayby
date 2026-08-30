@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 253 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 332 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 253 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 332 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -678,10 +678,8 @@ decisions:
       archive anywhere in `commitment_detail_screen.dart`. The board also
       replaces the stat wall with one lead figure and a *dated* twelve-week
       grid. This is missing function, not only layout.
-- [ ] **Today: the structure the device pass complained about.** The three open
-      items above — FAB over the last row, ~180px greeting, daily and period
-      rows at identical weight — are exactly what this board answers. Biggest
-      change of the four: dropping the FAB means rehoming add-commitment.
+- [x] **Today: the structure the device pass complained about** — `unit`,
+      `widget`. All three findings answered. See below.
 
 Also unbuilt, and it cuts across all four: **Newsreader is not bundled**, so
 every serif on every board renders in the device sans. See the type note in
@@ -816,3 +814,78 @@ actually moved. A rename does not claim to be a schedule change.
 
 Logic verified: analyze clean, check_arch clean, 314 tests pass (305 before,
 9 new). Not feel verified.
+
+### Today, rebuilt around a countdown
+
+The last of the four screen boards, and the three findings the device pass
+raised against this screen are each answered by a structural change rather than
+a repaint. Logic verified: `flutter analyze` clean, `tool/check_arch.sh` clean,
+332 tests pass (325 before, 7 new in `test/app/formatting_test.dart` plus a
+rewritten `home_screen_test.dart`). **Not feel verified.**
+
+**The headline counts down instead of scoring.** `_Progress` — a percentage, a
+bar and a "3 / 8" — is gone, replaced by one sentence: "Three left today",
+reaching "Done for today" at zero. The argument is in `dayHeadline`'s doc and
+it is about *when* the number is shown: at nine in the morning a percentage of
+a day is a failing grade for a day that has barely started, while a count of
+what remains is a task that shrinks as the day goes. A **closed** day still
+gets a tally ("2 of 3 done"), because once the day is over the count is a fact
+rather than a judgement delivered early.
+
+Two things deliberately do *not* enter the count:
+
+- **Period targets.** A 3x-a-week target cannot be behind on a Tuesday, so it
+  is never part of "left today". A user whose commitments are all weekly sees
+  "Nothing due today", never a "Done for today" they did not earn.
+- **Skips.** A skipped row is not waiting on anyone. It leaves the countdown
+  and the group tally exactly as it leaves consistency — and it stays visible
+  on screen, uncrossed, per principle 6.
+
+**Daily and period rows are two groups with two different row shapes.** This is
+principle 3, and it is the finding that mattered most: rendering a weekly
+target at the same weight as a daily one made it look overdue every day of the
+week. `PeriodTile` is a separate widget rather than `CommitmentTile` with a
+different subtitle — it shows pips and a tally and has no status mark at all,
+because a period has no status *today*. The group header says "NEVER LATE" out
+loud; without it the split reads as arbitrary.
+
+**The greeting is gone and so is the FAB.** Add moved into the day bar. A FAB
+is a 56dp disc pinned over the bottom-right of the one screen whose whole job
+is a scrollable column of tap targets, and it permanently hid one of them —
+`home_screen_test.dart` now asserts there is no `FloatingActionButton` at all,
+so it cannot come back by accident.
+
+What replaced the greeting is content rather than chrome: a fourteen-day banded
+strip, which is the same pixels as the old progress bar carrying the opposite
+message. The bar scored the day in progress; the strip scores only days that
+are over and draws the current one as an outline ring. It reads a wider range
+than the list does, so it resolves in its own provider and reserves its height
+while loading — a spinner there would put a spinner above the rows the user
+opened the app to tap.
+
+**The daily row lost its status caption.** "Not done yet" under every untouched
+commitment was a column of noise saying what an empty ring already says. What
+survives is the states a mark *cannot* carry: a tally, a status the user chose
+(Partial, Skipped, Paused), and their own note — which is now on the row rather
+than behind a dialog. The tests assert `OccurrenceStatus` off the model instead
+of a string that is deliberately no longer rendered.
+
+**Three layout bugs caught before they shipped**, all the same bug: an
+unconstrained `Text` in a `Row`. The strip's caption pair overflowed by 95px at
+320dp and 306px at 1.8x text scale; `SectionHeader`'s trailing label and
+`PeriodTile`'s tally would have done the same. Every one is now `Flexible` and
+wraps. Verified at 320dp, 400dp, landscape and 1.8x.
+
+**One thing found and deliberately not fixed:** marking Partial on *today*
+leaves the row reading pending, because an open window is `PENDING` by design
+and a partial recorded at ten in the morning must not close a day the user can
+still finish. That is the engine being right. It does mean the only feedback
+for the action is the undo bar; a caption appears once the day closes. Pinned
+by two tests so the distinction is not mistaken for a regression later.
+
+**Not built from this board:** the emoji at the left edge of each row are
+unchanged. The board replaces them with stroked glyphs, but `Commitment.icon`
+is a `String` that is serialised into the backup format, so that is a data
+migration and belongs to its own commit. `CommitmentIcon` is the seam — one
+widget, so the vocabulary changes in one file.
+

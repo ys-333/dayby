@@ -27,6 +27,17 @@ abstract final class Insets {
 
   /// Between the last control and a sheet's actions.
   static const double xl = 24;
+
+  /// Above a section overline, separating one group of rows from the next.
+  static const double sectionGap = 22;
+
+  /// Between a section overline and the first row under it.
+  static const double sectionHeaderGap = 4;
+
+  /// The optical inset the headline, strip and overlines share, on top of the
+  /// screen's own horizontal padding. Rows carry [rowH] instead, so their ink
+  /// lines up with this while their tap target runs wider.
+  static const double contentInset = 4;
 }
 
 /// Corner radii.
@@ -61,4 +72,26 @@ abstract final class Sizes {
 
   /// Glyph size relative to the circle enclosing it.
   static const double indicatorGlyphRatio = 0.62;
+
+  /// A day cell in the recent-days strip.
+  static const double stripCell = 24;
+
+  /// Between two strip cells.
+  static const double stripGap = 5;
+
+  /// A strip cell's corner. Deliberately not a circle: the strip is a bar
+  /// chart of days, and the calendar already owns round day cells.
+  static const double stripRadius = 3;
+
+  /// One completion pip on a period row.
+  static const double periodPip = 9;
+
+  /// Between two pips.
+  static const double periodPipGap = 5;
+
+  /// The most pips a period row will draw.
+  ///
+  /// Above this the row is counting, not showing — twenty dots is a texture,
+  /// not a quantity — so the tally carries it alone.
+  static const int maxPips = 7;
 }
