@@ -54,3 +54,8 @@ app.*.map.json
 
 # Personal Claude Code overrides
 .claude/settings.local.json
+
+# Git worktrees live here when two agents share this checkout. Each is a full
+# second working tree: untracked, and large enough that one `git add -A` in
+# the main checkout would commit an entire copy of the repo.
+.claude/worktrees/
