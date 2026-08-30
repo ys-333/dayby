@@ -41,7 +41,16 @@ class RecentStrip extends StatelessWidget {
           ExcludeSemantics(
             child: SizedBox(
               height: Sizes.stripCell,
+              // `stretch`, and it is load-bearing. A cell is a childless
+              // `DecoratedBox`, so under the default `center` alignment it
+              // sizes to the child it does not have and collapses to zero
+              // height — the SizedBox reserves 24dp and the cells paint one
+              // pixel inside it. Found on a device: the whole strip rendered
+              // as a single faint dash, because only today's brighter ring was
+              // visible at all. Nothing threw, and no test that merely renders
+              // the widget can notice.
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final (index, day) in days.indexed) ...[
                     if (index > 0) const SizedBox(width: Sizes.stripGap),

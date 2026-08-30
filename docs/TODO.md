@@ -202,7 +202,14 @@ vocabulary swap is a change to one file.
 Claude certifies "logic verified". "Feel verified" is a separate claim and
 Claude never makes it.
 
+- [x] **First device run** — 2026-08-30, release build on Android 14 with a
+      seeded year. Found two bugs no test could: the 14-day strip collapsed to
+      zero height, and "A target every a week". Both fixed and pinned.
 - [ ] **Feel check:** create and track in under 10 seconds on a real phone.
+- [ ] **Is the strip too loud?** `BandColors` was solved for a 34dp calendar
+      cell with a numeral in it; the strip reuses it at 24dp with none. Nine
+      clay rings shoulder to shoulder under the headline read as a row of
+      alarms. Feel judgement — see `PROGRESS.md`.
 - [ ] **Widget device check:** place it, confirm it renders, updates, and that
       tapping opens the app. The Kotlin has never executed.
 - [ ] Week grid, Insights, the rebuilt Today and the rebuilt commitment detail

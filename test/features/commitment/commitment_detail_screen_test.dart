@@ -85,6 +85,34 @@ void main() {
     expect(find.textContaining('scheduled days this month'), findsOneWidget);
   });
 
+  testWidgets('a period commitment names its period in readable English',
+      (tester) async {
+    final id = await h.repo.createCommitment(
+      name: 'Swim',
+      frequency: const Frequency.timesPerWeek(target: 2),
+      startedOn: d(2026, 6, 1),
+      nowUtc: h.nowUtc,
+      icon: 'swim',
+    );
+    await h.pump(tester, CommitmentDetailScreen(commitmentId: id));
+
+    // Read on a device as "A target every a week". The label carried its own
+    // article and the sentence added another.
+    expect(find.textContaining('every a week'), findsNothing);
+    expect(
+      find.text('A target every week · since Monday, Jun 1 2026'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a daily commitment claims no period at all', (tester) async {
+    final id = await seed(from: d(2026, 8, 1));
+    await h.pump(tester, CommitmentDetailScreen(commitmentId: id));
+
+    expect(find.textContaining('A target every'), findsNothing);
+    expect(find.text('Since Saturday, Aug 1 2026'), findsOneWidget);
+  });
+
   testWidgets('the twelve-week grid is dated, and every cell says its day',
       (tester) async {
     final id = await seed(from: d(2026, 8, 1), doneOffsets: [0, 1, 2]);

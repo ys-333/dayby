@@ -115,7 +115,8 @@ class CommitmentDetail {
   /// day. Changes what the grid's marks *mean*, so it travels with them.
   final bool isPeriod;
 
-  /// "a week" / "a month" for a period commitment, else null.
+  /// The bare period noun — "week" / "month" — for a period commitment, else
+  /// null. Bare so a caller can put its own article on it, or none.
   final String? periodLabel;
 
   final DatedNote? latestNote;
@@ -203,8 +204,8 @@ Stream<CommitmentDetail?> commitmentDetail(Ref ref, String commitmentId) {
       gridStart: gridStart,
       isPeriod: anyPeriod != null,
       periodLabel: switch (anyPeriod?.scope) {
-        PeriodScope.weekly => 'a week',
-        PeriodScope.monthly => 'a month',
+        PeriodScope.weekly => 'week',
+        PeriodScope.monthly => 'month',
         _ => null,
       },
       latestNote: _latestNote(resolved),

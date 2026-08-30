@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 399 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 403 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 399 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 403 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1110,3 +1110,48 @@ values.
 
 **`CLAUDE.md` said "No code yet".** It had described an empty repository since
 before the first commit, which is the first thing a new session reads. Fixed.
+
+### First device run of the redesign
+
+The app ran on hardware for the first time on 2026-08-30 — release build,
+Android 14, seeded with a generated year (20 commitments, 2679 events, 47%
+consistency for August). Two bugs, both invisible to the whole test suite.
+
+**The fourteen-day strip was rendering as a single faint dash.** `_Cell` is a
+childless `DecoratedBox`, and a `Row`'s default `center` alignment gives its
+children loose vertical constraints — so every cell sized itself to the child
+it does not have and **collapsed to zero height**. The `SizedBox` still
+reserved its 24dp, so the layout was the right size with nothing in it. Nothing
+threw. Only today's brighter ring painted at all, one pixel tall, which is why
+it read as a dash rather than as absence.
+
+This is the class of failure the feel check exists for: every widget test
+rendered the strip successfully, and the geometry tests confirmed no overflow at
+four sizes, because *a zero-height box overflows nothing*. The regression test
+measures each cell against `Sizes.stripCell`; reverting the fix prints
+`cell 0 collapsed to 0.0dp`.
+
+**"A target every a week."** `periodLabel` carried its own article and the
+sentence added another. It is now the bare noun, so the caller decides.
+
+Everything else rendered correctly, and the redesign's arguments hold on glass:
+done rows recede to muted ink with dimmed glyphs while pending rows stay bright,
+so the eye lands on exactly the two things left; the glyphs read as one family;
+the period group separates; the twelve-week grid draws its month ruler, weekday
+labels and credited-day dots, with no per-day status for a period target.
+
+### Open after the device run
+
+**The strip may be too loud, and it is a real question rather than a nit.**
+`BandColors` was designed for a 34dp calendar cell with a numeral inside it, and
+a weak day is carried by ring *weight* — 2.5px — so that it reads without
+colour. On the strip's 24dp cell that same ring is proportionally half again as
+heavy, there is no numeral to soften it, and fourteen cells sit shoulder to
+shoulder directly beneath the day's headline. With honest mediocre data — nine
+of thirteen settled days weak — it reads as a row of alarms under "Two left
+today", which is the opposite of what the countdown is for.
+
+The data is not wrong and clay is the correct band. The question is whether a
+component built for a calendar can be reused at 70% of its size without its
+weights being re-solved. Left for the user: it is a feel judgement, and Claude
+does not make those.

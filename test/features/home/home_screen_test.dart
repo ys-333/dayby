@@ -11,7 +11,10 @@ import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
 import 'package:riyaz/features/home/home_screen.dart';
 import 'package:riyaz/features/home/widgets/commitment_tile.dart';
+import 'package:riyaz/app/theme/tokens.dart';
+import 'package:riyaz/features/home/today_controller.dart';
 import 'package:riyaz/features/home/widgets/period_tile.dart';
+import 'package:riyaz/features/home/widgets/recent_strip.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 
 import '../../support/dates.dart';
@@ -160,6 +163,42 @@ void main() {
         find.widgetWithIcon(IconButton, Icons.add_rounded),
         findsOneWidget,
       );
+    });
+  });
+
+  group('the recent-days strip', () {
+    testWidgets('draws cells with real height, not a hairline', (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      final cells = find.descendant(
+        of: find.byType(RecentStrip),
+        matching: find.byType(DecoratedBox),
+      );
+      expect(cells, findsNWidgets(recentStripLength));
+
+      // The bug this pins: a cell is a childless `DecoratedBox`, so under a
+      // Row's default `center` alignment it sizes to the child it does not
+      // have and collapses to zero height. The SizedBox still reserves its
+      // 24dp, nothing throws, and every "does it render" test passes — the
+      // whole strip just becomes one faint dash. Only measuring catches it.
+      for (var i = 0; i < recentStripLength; i++) {
+        final size = tester.getSize(cells.at(i));
+        expect(size.height, Sizes.stripCell,
+            reason: 'cell $i collapsed to ${size.height}dp');
+        expect(size.width, greaterThan(0));
+      }
+    });
+
+    testWidgets('marks the day being shown, and only that day', (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      final strip = tester.widget<RecentStrip>(find.byType(RecentStrip));
+      expect(strip.days, hasLength(recentStripLength));
+      expect(strip.days.where((d) => d.isAnchor), hasLength(1));
+      expect(strip.days.last.isAnchor, isTrue);
+      expect(strip.caption, 'Today still open');
     });
   });
 
