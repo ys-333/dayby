@@ -24,6 +24,9 @@ abstract final class Insets {
 
   /// Between a title and the line beneath it.
   static const double titleGap = 2;
+
+  /// Between the last control and a sheet's actions.
+  static const double xl = 24;
 }
 
 /// Corner radii.

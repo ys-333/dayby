@@ -672,8 +672,9 @@ decisions:
 
 - [x] **Insights: the load warning reads as an error** — `widget`. See below.
 - [x] **History: period rows break the week grid** — `unit`, `widget`. See below.
-- [~] **Detail: three actions are missing entirely.** Archive and unarchive
-      are built (below). Pause and edit are not. No edit, no pause, no
+- [~] **Detail: three actions are missing entirely.** Archive, unarchive and
+      edit are built (below). Pause is not — it needs the schema v3 migration
+      recorded in `docs/TODO.md`. No edit, no pause, no
       archive anywhere in `commitment_detail_screen.dart`. The board also
       replaces the stat wall with one lead figure and a *dated* twelve-week
       grid. This is missing function, not only layout.
@@ -779,3 +780,39 @@ attempted: `CommitmentState.paused` is referenced nowhere — the engines read
 `PausePeriods` alone, so wiring Pause to it would look correct and silently do
 nothing — and `PausePeriod.to` is non-null, so an open-ended pause needs a
 schema decision.
+
+### Editing, without editing the past
+
+`updateCommitment` did not exist. It does now, and the whole of its care is in
+one distinction: name, icon and description describe the commitment, while
+**frequency describes what was expected of you**.
+
+Rewriting the current schedule row in place would retroactively change what
+every past day was measured against — switch a year-old daily habit to 3×/week
+and twelve months re-resolve against a target nobody was ever held to. Nothing
+throws. The numbers simply become wrong, which is the same shape as the
+archive bug earlier today.
+
+So a frequency change is effective-dated: the version in force closes the day
+before, a new one opens on the change date. `frequency_picker.dart` was lifted
+out of the add screen rather than copied, so both doors offer the same control
+and the same vocabulary.
+
+**The tests resolve across the change date in both directions** — the past
+must be unchanged *and* the future must use the new rules. Verified
+non-vacuous: forcing an in-place rewrite fails three of them, including
+"the past is still judged by the rules it was lived under".
+
+One question raised beforehand answered itself. Whether to amend rather than
+version when a commitment has no history looked like a taste call; it is not.
+A schedule that already begins on or after the change date **must** be
+amended, because closing it the day before would leave a version whose end
+precedes its start — an empty row every future reader would have to know to
+skip.
+
+The sheet says "your history does not change" *before* the user commits, and
+"Saved. Your history is unchanged." after, but only when the frequency
+actually moved. A rename does not claim to be a schedule change.
+
+Logic verified: analyze clean, check_arch clean, 314 tests pass (305 before,
+9 new). Not feel verified.
