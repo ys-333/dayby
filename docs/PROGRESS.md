@@ -749,13 +749,30 @@ and asserts every status and every credit is identical. Verified non-vacuous:
 flipping `includeArchived` to false — the exact silent failure, where a year
 of history stops counting and nothing throws — fails it.
 
-No rollup invalidation, and that is deliberate rather than forgotten:
-`includeArchived` defaults to true and nothing in `lib/` passes false, so
-archiving resolves no occurrence differently and there is nothing stale to
-rebuild.
+**The first version of this was wrong, and shipped.** It set `state` and
+`archivedOn` and stopped there, arguing that archiving needed no rollup
+invalidation because it "resolves no occurrence differently". That holds only
+for dates at or before the archive date — which is exactly the window the
+original tests resolved, so they passed.
 
-Logic verified: analyze clean, check_arch clean, 302 tests pass (297 before,
-5 new). Not feel verified.
+`lib/domain/` reads neither `state` nor `archivedOn`; the **schedule** is the
+source of truth for what was expected. Leaving the schedule open meant the
+commitment kept generating expected occurrences forever, each turning MISSED
+as its day closed. Measured on a commitment archived seven weeks earlier:
+**49 of 49 days missed, identical to not archiving at all.** Archive a daily
+commitment and consistency bleeds a miss a day, indefinitely, with nothing
+throwing.
+
+Archiving now closes the schedule at the archive date, in the same transaction
+as the flag, and does mark rollups stale. Unarchiving reopens the version it
+closed — matched on the stored archive date, so a schedule that genuinely
+ended on another day is untouched.
+
+Logic verified: analyze clean, check_arch clean, 305 tests pass (297 before,
+8 new). Not feel verified.
+
+The lesson is in the test, not the fix: an assertion that history is unchanged
+means nothing if the window it inspects ends where the change begins.
 
 Two traps found while building it, recorded in `docs/TODO.md` before pause is
 attempted: `CommitmentState.paused` is referenced nowhere — the engines read

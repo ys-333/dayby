@@ -245,12 +245,29 @@ void main() {
         nowUtc: now,
         label: 'done',
       );
-      await repo.setState(id, CommitmentState.archived, archivedOn: today);
+      await repo.archiveCommitment(id, today);
 
       final snap = await repo.read(week);
       expect(snap.commitments.single.state, CommitmentState.archived);
       expect(snap.commitments.single.archivedOn, today);
       expect(snap.events, hasLength(1), reason: 'history must survive archive');
+      // The flag is decoration; this is the part the engine reads.
+      expect(snap.schedulesFor(id).single.effectiveTo, today,
+          reason: 'an archived commitment with an open schedule keeps '
+              'expecting occurrences forever');
+    });
+
+    test('unarchiving reopens the schedule archiving closed', () async {
+      final id = await newCommitment();
+      await repo.archiveCommitment(id, today);
+      await repo.unarchiveCommitment(id);
+
+      final snap = await repo.read(week);
+      expect(snap.commitments.single.state, CommitmentState.active);
+      expect(snap.commitments.single.archivedOn, isNull);
+      expect(snap.schedulesFor(id).single.effectiveTo, isNull,
+          reason: 'a commitment back in the list must expect occurrences '
+              'again, or it is archived in everything but name');
     });
 
     test('deleting a commitment cascades to its events', () async {

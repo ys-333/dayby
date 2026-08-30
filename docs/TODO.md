@@ -40,9 +40,11 @@ already exist and have **zero callers**. The engines already honour both —
 `resolution.dart:86`, `today_controller.dart:45`, `week_grid.dart:78`.
 
 - [x] **Archive and unarchive** — `unit`, `widget`. Overflow menu, undo, and a
-      banner that says history is kept. `archive_test.dart` asserts every
-      resolved status and credit is byte-identical across an archive; checked
-      non-vacuous by making archived history drop out of resolution.
+      banner that says history is kept. Archiving **closes the schedule** at
+      the archive date; the flag alone is invisible to `lib/domain/` and left
+      the commitment accruing a miss a day forever (measured 49 of 49). Tests
+      resolve *past* the archive date, which is what the first pair failed to
+      do.
 - [ ] **Pause and resume.** Wire `pauseCommitment()`. Paused days are
       `NOT_EXPECTED`, never misses — assert that in the same commit.
       **Two traps found while building archive.** `CommitmentState.paused` has
@@ -51,8 +53,20 @@ already exist and have **zero callers**. The engines already honour both —
       Wiring Pause to `setState(paused)` would look right and silently do
       nothing, leaving the engine still expecting occurrences and marking them
       MISSED. And `PausePeriod.to` is non-null, so "pause until I resume" needs
-      either a sentinel far-future date or a nullable column — a **schema v3
-      migration**. Decide which before building.
+      a **nullable column, schema v3** — decided; a far-future sentinel would
+      leak into `PauseCoverage.covers`, into calendar arithmetic, and into the
+      backup file that `backup_codec.dart` keeps human-readable precisely so a
+      damaged one can be repaired by hand.
+      Real cost, all of it in the format contract rather than the column:
+      bump `BackupDocument.currentVersion`; teach `_readPause` to accept a
+      null `to` while still reading old files; write `"to": null` explicitly
+      rather than omitting the key; `covers()` becomes
+      `date >= from && (to == null || date <= to)`; enforce **at most one open
+      pause per commitment**, closing any open one when a new pause starts;
+      and give resume the `markStale(from)` that only the create path has
+      today. `TableMigration` rebuild — SQLite cannot drop NOT NULL in place.
+      `_resolutionVersion` does **not** move: the rule is unchanged, only the
+      data.
 - [ ] **Edit.** The only one missing end to end: there is no
       `updateCommitment` on the repository at all. Name, icon, description.
       Schedule edits must stay **effective-dated** — changing a frequency must
@@ -69,8 +83,10 @@ already exist and have **zero callers**. The engines already honour both —
 
 ## 3. Today — the biggest board, and the biggest visible win
 
-Downstream of §2: rehoming the FAB while the icons change underneath is two
-migrations tangled together.
+**Not downstream of §2.** The structural fixes are independent of what mark
+sits at the left edge of a row: build the structure, leave the emoji rendering
+exactly as it is, and let the vocabulary be decided separately. The migration
+cost belongs to the icon decision, not to this.
 
 - [ ] Headline counts **down to zero** instead of scoring you.
 - [ ] Weekly targets move to their own group — a 3×/week target cannot be late
