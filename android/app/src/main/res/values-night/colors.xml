@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget colours, dark. Palette.dark from lib/app/theme/palette.dart; see the
+  note in values/colors.xml for why these are named rather than inherited from
+  the host launcher's theme.
+-->
+<resources>
+    <color name="widget_surface">#FF1B1915</color>
+    <color name="widget_ink">#FFF2EEE6</color>
+    <color name="widget_ink_dim">#FF9E988B</color>
+</resources>

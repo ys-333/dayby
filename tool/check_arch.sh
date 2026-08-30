@@ -38,5 +38,29 @@ hits=$(scan "\b0\.5\b" | grep -v '/scoring' || true)
 [ -n "$hits" ] && report "partial-credit weight (0.5) belongs in the scoring module:
 $hits"
 
+# 5. Widget colours must be named app colours, never theme attributes.
+#    RemoteViews are inflated by the launcher, so `?android:attr/...` resolves
+#    against *the launcher's* theme rather than the user's dark-mode setting.
+#    In practice that drew a white widget beside a dark app. Named colours with
+#    a values-night variant put the choice back on the system setting. This
+#    also covers values*/styles.xml, because the row style is where the first
+#    attempt at this fix missed one and shipped dark text on a dark surface.
+widget_attr_hits() {
+  for f in android/app/src/main/res/layout/riyaz_widget*.xml; do
+    [ -e "$f" ] || continue
+    sed '/<!--/,/-->/d' "$f" | grep -o '?android:[A-Za-z/]*' | sed "s|^|$f: |"
+  done
+  for f in android/app/src/main/res/values*/styles.xml; do
+    [ -e "$f" ] || continue
+    sed -n '/<style name="RiyazWidget/,/<\/style>/p' "$f" \
+      | grep -o '?android:[A-Za-z/]*' | sed "s|^|$f (RiyazWidget style): |"
+  done
+}
+if [ -d android/app/src/main/res ]; then
+  hits=$(widget_attr_hits)
+  [ -n "$hits" ] && report "widget resources must use named colours, not theme attributes:
+$hits"
+fi
+
 [ "$fail" -eq 0 ] && echo "architecture ok"
 exit "$fail"

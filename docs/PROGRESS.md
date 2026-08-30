@@ -21,24 +21,31 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
 `github.com/ys-333/dayby` on `main`. The app builds, persists to SQLite, and
 has four tabs: Today, History, Insights, Settings.
 
-**It has never run on a device.** Everything is logic-verified only.
+**It runs on a device**, seeded with synthetic data, and the home-screen
+widget has now been placed and watched. Every line of app code has executed at
+least once. What is still unverified is **feel**, not function — see below.
 
-### The four open items — none of them are code Claude can write
+### The open items — none of them are code Claude can write
 
 1. **Feel check (you).** `flutter run -d <device>`, then: can you create a
    commitment and track a day in under 10 seconds? That is the product's whole
-   promise and nothing in the test suite can answer it.
-2. **Widget device check (you).** The Kotlin in
-   `android/app/src/main/kotlin/.../RiyazWidgetProvider.kt` compiles and is
-   registered in the manifest, but **has never executed**. Place the widget,
-   confirm it draws, updates when you tick something, and opens the app on tap.
-3. **Export destination — needs your decision.** Export currently writes to the
+   promise and nothing in the test suite can answer it. This is the one claim
+   Claude never certifies.
+2. **Export destination — needs your decision.** Export currently writes to the
    app's documents directory and offers the JSON on the clipboard. Reaching
    Downloads or a share sheet needs `file_picker` or `share_plus`, and CLAUDE.md
    forbids adding a package unasked. **Answer yes or no and the work is small.**
    Android Auto Backup already covers the lost-phone case.
-4. ~~Period-close review UI~~ — **built** 2026-08-30. See the section at the
+3. ~~Period-close review UI~~ — **built** 2026-08-30. See the section at the
    foot of this file.
+4. ~~Widget device check~~ — **done** 2026-08-30. `render()` and
+   `applyPayload()` executed for the first time; the widget drew, matched the
+   app, deep-linked on tap, and updated live. See `docs/TODO.md`.
+
+**One lesson from that check, worth carrying:** the first device observation
+certified a *stale APK*. The widget showed the pre-fix `13/18` because the
+release reinstall had run before the fix was committed. A device check proves
+nothing about source you did not just build and install.
 
 ### Two things worth knowing before touching the code
 
@@ -58,7 +65,7 @@ has four tabs: Today, History, Insights, Settings.
 | `lib/domain/` | pure Dart engines — no Flutter, no Drift, injected `Clock` |
 | `lib/data/` | Drift schema v4, repositories, backup codec, seeder loader |
 | `lib/features/<name>/` | one folder per screen area |
-| `tool/check_arch.sh` | enforces domain purity + clock discipline |
+| `tool/check_arch.sh` | domain purity, clock discipline, widget colour naming |
 
 ---
 
@@ -1423,3 +1430,56 @@ channel carries it, `MainActivity` stores it, and the JSON on disk is correct.
 That leaves `render()` and `applyPayload()` as the only widget code that has
 never run, and they need a launcher that hosts widgets, which this phone's does
 not.
+
+---
+
+## The widget, seen (2026-08-30)
+
+The last never-executed code in the app. `render()` and `applyPayload()` had
+been written, reviewed, and covered by tests that fed them synthetic payloads —
+but no launcher on this phone hosts widgets, so nothing had ever inflated them.
+
+Closed by temporarily switching the default launcher to `com.android.launcher3`
+(recorded first, restored afterwards, verified restored), pinning the widget
+from Settings → Add the widget, and looking.
+
+**What worked, first try.** The pin request reached the launcher and bound an
+instance — `dumpsys appwidget` showed `views=android.widget.RemoteViews@…`,
+which is the framework confirming our RemoteViews were accepted. Tapping the
+widget opened the app. Marking a commitment done in the app moved the widget
+from `7/8` to `8/8` with no manual refresh, so the whole chain — tap → event →
+rollup → payload → method channel → SharedPreferences → provider → RemoteViews
+— is now observed end to end rather than inferred from its parts.
+
+**Finding 1: the check nearly certified the wrong binary.** The widget first
+drew `13/18`, the daily+period figure the fix had removed. The source was
+correct; the APK was not. The release reinstall had happened before the
+daily-only commit, and opening the app let the *stale* build recompute a fresh
+wrong number — which is exactly the shape that looks like a live bug. Corrobo-
+rated by the tree-shaken icon font changing size between builds. Rebuild, then
+observe; never the other way round.
+
+**Finding 2: `?android:attr` does not mean what the layout thought.** The
+layout deferred to the host's theme by design, reasoning that "a widget is
+drawn by the launcher in a theme this app does not control". True, and that is
+the problem: RemoteViews are inflated *by the launcher*, so the attribute
+resolves against the launcher's theme, not the user's dark-mode setting. This
+launcher hosts widgets light. A phone in dark mode, running a dark app, got a
+white slab. Replaced with named colours plus a `values-night` variant, sourced
+from `Palette.light` / `Palette.dark`, and verified both ways with
+`cmd uimode night no` / `auto`.
+
+**Finding 3, self-inflicted and the most useful of the three.** The first pass
+at Finding 2 made things worse: `sed` caught the two inline `textColor`
+attributes and missed `@style/RiyazWidgetRow` in `values/styles.xml`. Result —
+dark background, launcher-dark row text, unreadable. My own "no stragglers"
+check had been scoped to `layout/`, so it reported clean. Two lessons, both
+now enforced rather than remembered: a sweep must cover styles as well as
+layouts, and a widget's appearance is not testable in Dart, so
+`tool/check_arch.sh` gained **rule 5** — no `?android:attr` in the widget
+layouts or the `RiyazWidget*` styles. Verified non-vacuous by reverting each
+of the two sites separately and confirming the check fails on each, and that
+the prose in the file headers does not trip it.
+
+Verification: `device` (both themes, live update, deep link), `arch` (rule 5,
+non-vacuity checked), 436 unit/widget tests green, `flutter analyze` clean.

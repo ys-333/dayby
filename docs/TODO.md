@@ -226,13 +226,48 @@ Claude never makes it.
       not reach the app; x=955 does. Almost certainly the phone's edge handle
       or a scrollbar, not the app — but check with a real thumb that the week
       grid's review button is comfortable to hit.
-- [~] **Widget device check.** The method channel and the pin request now run
-      on device — first execution of the Kotlin, no crash — and the provider
-      registers correctly. **`render()` and `applyPayload()` still have not
-      run**, because no instance can be placed: this phone's launcher is
-      `com.qqlabs.minimalistlauncher`, which does not host widgets. Finishing
-      this means temporarily switching the default launcher to
-      `com.android.launcher3`, which is installed. Your call, your phone.
+- [x] **Widget device check** — `device`. Done 2026-08-30 by temporarily
+      switching the default launcher to `com.android.launcher3` and switching
+      back afterwards. `render()` and `applyPayload()` have now executed:
+      the widget was pinned from Settings, drew on the home screen, matched
+      the app exactly (`7/8` against `TODAY 7 OF 8`, same four rows, same
+      order, Reading as `—` for skipped), deep-linked into the app on tap, and
+      **updated live to `8/8`** when a commitment was marked done in the app —
+      so the whole chain from tap to pixels is now observed, not assumed.
+
+      Two things only looking could have found:
+
+      1. The APK on the phone was stale. It rendered `13/18`, the pre-fix
+         daily+period figure, because the release reinstall had run *before*
+         the daily-only commit. Nothing was wrong with the code; the check
+         would have certified the wrong binary. Rebuild before believing a
+         device observation.
+      2. The widget drew **white on a black home screen** beside a dark app.
+         Cause and fix below.
+- [x] **The widget follows the system theme, not the launcher's** — `device`,
+      `arch`. The layout used `?android:attr/colorBackground` and
+      `textColorPrimary` on the stated reasoning that a widget "is drawn by
+      the launcher in a theme this app does not control", so it should defer
+      to that theme. On hardware the reasoning inverted: RemoteViews are
+      inflated *by the launcher*, so a theme attribute resolves against the
+      launcher's theme rather than the user's dark-mode setting. This
+      launcher hosts widgets light, so a phone in dark mode running a dark app
+      got a white slab.
+
+      Now named colours (`widget_surface`, `widget_ink`, `widget_ink_dim`) with
+      a `values-night` variant, taken from `Palette.light` / `Palette.dark` so
+      the widget and the app are the same warm paper and warm near-black.
+      Verified both ways on device by forcing `cmd uimode night no` and back.
+
+      The first attempt at this shipped a worse bug than the one it fixed:
+      `sed` caught the two inline `textColor` attributes in the layouts and
+      missed `@style/RiyazWidgetRow` in `values/styles.xml`, so the background
+      went dark while the rows stayed at the launcher's dark ink — dark on
+      dark, unreadable. Found by looking at the screen; no test could have.
+      `tool/check_arch.sh` rule 5 now scans the widget layouts **and the
+      RiyazWidget styles** for `?android:attr`, and is verified non-vacuous
+      against each site separately.
+
 - [ ] Week grid, Insights, the rebuilt Today and the rebuilt commitment detail
       on a device — all built, none seen on hardware.
 - [ ] The glyph vocabulary on a real screen. Twenty-eight outlined Material

@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Deliberately plain: a widget is drawn by the launcher in a theme this app
-  does not control, so it uses system attributes rather than app colours and
-  states are carried by text glyphs (checkmark, ring, cross) rather than hue.
+  Deliberately plain: states are carried by text glyphs (checkmark, ring,
+  cross) rather than hue, because a widget is drawn at whatever size and over
+  whatever wallpaper the user chose.
+
+  Colours are named app colours with a `-night` variant, not `?android:attr`
+  theme attributes. A widget is inflated by the launcher, so a theme attribute
+  resolves against the launcher's theme rather than the user's dark-mode
+  setting; see values/colors.xml for what that looked like in practice.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -10,7 +15,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="12dp"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/widget_surface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -27,7 +32,7 @@
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end"
-            android:textColor="?android:attr/textColorPrimary" />
+            android:textColor="@color/widget_ink" />
 
         <TextView
             android:id="@+id/progress_label"
@@ -35,7 +40,7 @@
             android:layout_height="wrap_content"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:textColor="@color/widget_ink_dim" />
     </LinearLayout>
 
     <TextView android:id="@+id/row_0" style="@style/RiyazWidgetRow" />

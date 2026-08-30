@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget colours, light.
+
+  These exist because `?android:attr/colorBackground` does not mean what it
+  looks like it means inside a widget. RemoteViews are inflated by the
+  launcher, so a theme attribute resolves against *the launcher's* theme, not
+  the system dark setting and not this app's. On a device in dark mode, with
+  the app drawing its dark palette, a launcher that hosts widgets with a light
+  theme produced a white slab on a black home screen — legible, but plainly
+  not part of the same app.
+
+  Naming an explicit colour and letting the `-night` qualifier pick the variant
+  moves the decision back to the user's dark-mode setting, which is the thing
+  they actually chose. Values are Palette.light from lib/app/theme/palette.dart;
+  keep the two in step.
+-->
+<resources>
+    <color name="widget_surface">#FFF5F2EA</color>
+    <color name="widget_ink">#FF1E1B16</color>
+    <color name="widget_ink_dim">#FF4A443A</color>
+</resources>
