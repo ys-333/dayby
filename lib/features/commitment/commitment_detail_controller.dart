@@ -95,26 +95,20 @@ class CommitmentActions {
 
   /// Takes a commitment out of the daily list without touching its past.
   ///
-  /// History is preserved, deliberately and completely: nothing is deleted,
-  /// no event is rewritten, and every rollup already computed stays valid.
-  /// `ResolutionService` reads archived commitments like any other
-  /// (`includeArchived` defaults to true and nothing passes false), so the
-  /// consistency numbers on the history and insights screens are identical
-  /// either side of this call. What changes is only that `todayView` and the
-  /// week grid stop listing it.
+  /// History before the archive date is preserved exactly — nothing deleted,
+  /// no event rewritten. What archiving *does* change is the future: the
+  /// schedule is closed on the archive date, so no occurrence is expected
+  /// after it and none can turn MISSED.
   ///
-  /// That is also why this does not invalidate rollups. It is not an omission
-  /// — archiving resolves no occurrence differently, so there is nothing
-  /// stale to rebuild.
-  Future<void> archive(String commitmentId) => repository.setState(
-        commitmentId,
-        CommitmentState.archived,
-        archivedOn: today,
-      );
+  /// That closing is the whole substance of the operation. `lib/domain/` reads
+  /// neither `state` nor `archivedOn`, so a version of this that only set the
+  /// flag would leave the engine expecting a run every day forever.
+  Future<void> archive(String commitmentId) =>
+      repository.archiveCommitment(commitmentId, today);
 
-  /// Puts it back in the list. Clears `archivedOn` in the same write.
+  /// Puts it back in the list and reopens the schedule archiving closed.
   Future<void> unarchive(String commitmentId) =>
-      repository.setState(commitmentId, CommitmentState.active);
+      repository.unarchiveCommitment(commitmentId);
 }
 
 @riverpod

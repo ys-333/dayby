@@ -303,13 +303,67 @@ class TrackingRepository {
     await onWrite?.call(from);
   }
 
-  Future<void> setState(String commitmentId, CommitmentState state,
-      {CivilDate? archivedOn}) =>
-      (_db.update(_db.commitments)..where((t) => t.id.equals(commitmentId)))
+  /// Archives on [on], and closes the schedule on the same day.
+  ///
+  /// Closing the schedule is the part that matters. `lib/domain/` reads
+  /// neither `state` nor `archivedOn` — by design, since the **schedule** is
+  /// the source of truth for what was expected. Flipping the flag alone
+  /// therefore changes nothing the engine can see: the commitment keeps
+  /// generating expected occurrences forever, and every one of them turns
+  /// MISSED as its day closes. Archive a daily commitment and your consistency
+  /// bleeds a miss a day, indefinitely, with nothing anywhere throwing.
+  ///
+  /// So archiving ends the schedule rather than marking the commitment. Both
+  /// writes are one transaction: a commitment archived with its schedule still
+  /// open is precisely the corrupt state this exists to prevent.
+  Future<void> archiveCommitment(String commitmentId, CivilDate on) async {
+    await _db.transaction(() async {
+      await (_db.update(_db.commitments)
+            ..where((t) => t.id.equals(commitmentId)))
           .write(CommitmentsCompanion(
-        state: Value(state),
-        archivedOn: Value(archivedOn),
+        state: const Value(CommitmentState.archived),
+        archivedOn: Value(on),
       ));
+      await (_db.update(_db.commitmentSchedules)
+            ..where((t) =>
+                t.commitmentId.equals(commitmentId) & t.effectiveTo.isNull()))
+          .write(CommitmentSchedulesCompanion(effectiveTo: Value(on)));
+    });
+    // Days from the archive onward now resolve differently, so any rollup
+    // covering them is stale. The earlier claim that archiving needed no
+    // invalidation was true only for dates at or before the archive date.
+    await onWrite?.call(on);
+  }
+
+  /// Puts it back, reopening the schedule that archiving closed.
+  ///
+  /// Only the version closed on the stored archive date is reopened, so a
+  /// schedule that genuinely ended on some other day is left alone.
+  Future<void> unarchiveCommitment(String commitmentId) async {
+    final row = await (_db.select(_db.commitments)
+          ..where((t) => t.id.equals(commitmentId)))
+        .getSingleOrNull();
+    final archivedOn = row?.archivedOn;
+
+    await _db.transaction(() async {
+      await (_db.update(_db.commitments)
+            ..where((t) => t.id.equals(commitmentId)))
+          .write(const CommitmentsCompanion(
+        state: Value(CommitmentState.active),
+        archivedOn: Value(null),
+      ));
+      if (archivedOn != null) {
+        await (_db.update(_db.commitmentSchedules)
+              ..where((t) =>
+                  t.commitmentId.equals(commitmentId) &
+                  t.effectiveTo.equalsValue(archivedOn)))
+            .write(const CommitmentSchedulesCompanion(
+          effectiveTo: Value(null),
+        ));
+      }
+    });
+    if (archivedOn != null) await onWrite?.call(archivedOn);
+  }
 
   // --------------------------------------------------------------- internals
 
