@@ -7,5 +7,6 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/riyaz_widget"
+    android:previewLayout="@layout/riyaz_widget_preview"
     android:description="@string/widget_description"
     android:updatePeriodMillis="1800000" />

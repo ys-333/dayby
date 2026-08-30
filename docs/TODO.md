@@ -226,8 +226,13 @@ Claude never makes it.
       not reach the app; x=955 does. Almost certainly the phone's edge handle
       or a scrollbar, not the app — but check with a real thumb that the week
       grid's review button is comfortable to hit.
-- [ ] **Widget device check:** place it, confirm it renders, updates, and that
-      tapping opens the app. The Kotlin has never executed.
+- [~] **Widget device check.** The method channel and the pin request now run
+      on device — first execution of the Kotlin, no crash — and the provider
+      registers correctly. **`render()` and `applyPayload()` still have not
+      run**, because no instance can be placed: this phone's launcher is
+      `com.qqlabs.minimalistlauncher`, which does not host widgets. Finishing
+      this means temporarily switching the default launcher to
+      `com.android.launcher3`, which is installed. Your call, your phone.
 - [ ] Week grid, Insights, the rebuilt Today and the rebuilt commitment detail
       on a device — all built, none seen on hardware.
 - [ ] The glyph vocabulary on a real screen. Twenty-eight outlined Material

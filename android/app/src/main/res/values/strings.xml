@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_description">Today\'s commitments at a glance</string>
+
+    <!--
+      Preview content only. Never shown over real data — the widget draws
+      strings the Dart accounting engine decided. Kept plausible rather than
+      aspirational: a preview showing every row ticked sets an expectation the
+      product spends its whole design refusing to set.
+    -->
+    <string name="widget_preview_date">Friday, Aug 28</string>
+    <string name="widget_preview_progress">2/4</string>
+    <string name="widget_preview_row_1">Running  ✓</string>
+    <string name="widget_preview_row_2">Meditate  ✓</string>
+    <string name="widget_preview_row_3">Reading  ○</string>
 </resources>

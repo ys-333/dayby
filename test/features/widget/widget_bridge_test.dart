@@ -85,4 +85,72 @@ void main() {
     );
     expect(built.encode(), contains('"dateLabel":"Friday, Aug 28"'));
   });
+
+  group('requestPin', () {
+    /// Android is the only platform with widgets, and the bridge must be inert
+    /// everywhere else rather than throwing into a screen.
+    void onAndroid() {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    }
+
+    test('asks the launcher and reports that it was asked', () async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return true;
+      });
+      onAndroid();
+
+      expect(await const WidgetBridge().requestPin(), isTrue);
+      expect(calls.single.method, WidgetBridge.pinMethod);
+    });
+
+    test('a launcher that will not pin reports false, and does not throw',
+        () async {
+      // Plenty of launchers do not support pinning. The caller has to be able
+      // to tell the user to place it by hand instead of appearing to do
+      // nothing.
+      messenger.setMockMethodCallHandler(channel, (call) async => false);
+      onAndroid();
+      expect(await const WidgetBridge().requestPin(), isFalse);
+    });
+
+    test('a null answer is false, never a crash', () async {
+      messenger.setMockMethodCallHandler(channel, (call) async => null);
+      onAndroid();
+      expect(await const WidgetBridge().requestPin(), isFalse);
+    });
+
+    test('a platform exception is swallowed like every other widget call',
+        () async {
+      messenger.setMockMethodCallHandler(
+        channel,
+        (call) async => throw PlatformException(code: 'NOPE'),
+      );
+      onAndroid();
+      // The widget is a convenience. Nothing about it may break the app
+      // running in front of the user.
+      expect(await const WidgetBridge().requestPin(), isFalse);
+    });
+
+    test('no native side at all is false, not an exception', () async {
+      messenger.setMockMethodCallHandler(channel, null);
+      onAndroid();
+      expect(await const WidgetBridge().requestPin(), isFalse);
+    });
+
+    test('does nothing off Android', () async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return true;
+      });
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      expect(await const WidgetBridge().requestPin(), isFalse);
+      expect(calls, isEmpty);
+    });
+  });
 }

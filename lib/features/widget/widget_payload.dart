@@ -10,7 +10,6 @@ class WidgetRow {
     required this.label,
     required this.glyph,
     required this.detail,
-    required this.icon,
   });
 
   final String commitmentId;
@@ -27,14 +26,24 @@ class WidgetRow {
   /// Progress for countable rows: "2/4". Empty for simple ones.
   final String detail;
 
-  final String icon;
-
+  /// **No icon field, deliberately.**
+  ///
+  /// There used to be one, carrying whatever string `Commitment.icon` held,
+  /// and it worked for exactly as long as that string was an emoji. Once the
+  /// icon vocabulary became glyph *keys* the widget started prepending the key
+  /// itself — every row would have read "run Running  ✓". Nothing failed,
+  /// because the widget had never once been drawn.
+  ///
+  /// It is not coming back as a key either. The widget is `RemoteViews`
+  /// inflated in the launcher's process, which has no access to the Material
+  /// icon font Flutter bundles as an app asset, so there is nothing there that
+  /// can turn "run" into a runner. A name and a status glyph is the honest
+  /// content for this surface.
   Map<String, dynamic> toJson() => {
         'id': commitmentId,
         'label': label,
         'glyph': glyph,
         'detail': detail,
-        'icon': icon,
       };
 }
 
@@ -60,7 +69,6 @@ class WidgetPayload {
           label: item.commitment.name,
           glyph: glyphFor(item.status),
           detail: item.isCountable ? '${item.completed}/${item.target}' : '',
-          icon: item.commitment.icon ?? '',
         ),
     ];
 

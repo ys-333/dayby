@@ -17,6 +17,7 @@ class WidgetBridge {
 
   static const String channelName = 'dev.riyaz/widget';
   static const String updateMethod = 'update';
+  static const String pinMethod = 'pinWidget';
 
   final MethodChannel channel;
 
@@ -30,6 +31,30 @@ class WidgetBridge {
       return false;
     } on MissingPluginException {
       // No native side registered — desktop, web, or a test.
+      return false;
+    }
+  }
+
+  /// Asks the launcher to offer the user a one-tap "add this widget".
+  ///
+  /// Returns false when the platform has no widgets, when the launcher does
+  /// not support pinning — plenty do not — or when it simply declines. The
+  /// caller has to say something in that case rather than appear to do
+  /// nothing, because the whole point of this path is that the manual route
+  /// (long-press the wallpaper, find Widgets, scroll an alphabetical list of
+  /// every app on the phone) is one most people never complete.
+  ///
+  /// A `true` result means the launcher *showed its dialog*, not that the user
+  /// accepted. Android gives no callback for the choice, so the app must not
+  /// claim the widget was added.
+  Future<bool> requestPin() async {
+    if (!_supported) return false;
+    try {
+      return await channel.invokeMethod<bool>(pinMethod) ?? false;
+    } on PlatformException catch (e) {
+      debugPrint('Widget pin refused: ${e.message}');
+      return false;
+    } on MissingPluginException {
       return false;
     }
   }

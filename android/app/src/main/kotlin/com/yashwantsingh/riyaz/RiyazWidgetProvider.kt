@@ -98,10 +98,8 @@ class RiyazWidgetProvider : AppWidgetProvider() {
                 for (i in ROW_IDS.indices) {
                     val text = if (rows != null && i < rows.length()) {
                         val row = rows.getJSONObject(i)
-                        val icon = row.optString("icon")
                         val detail = row.optString("detail")
                         buildString {
-                            if (icon.isNotEmpty()) append("$icon ")
                             append(row.optString("label"))
                             append("  ")
                             append(if (detail.isNotEmpty()) detail else row.optString("glyph"))

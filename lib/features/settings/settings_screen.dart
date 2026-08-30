@@ -7,6 +7,7 @@ import 'package:riyaz/data/backup/backup_document.dart';
 import 'package:riyaz/data/backup/backup_service.dart';
 import 'package:riyaz/data/seed/seed_loader.dart';
 import 'package:riyaz/domain/seed/synthetic_seeder.dart';
+import 'package:riyaz/features/home/today_controller.dart';
 
 import 'backup_controller.dart';
 
@@ -75,6 +76,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: Text(settings.timezoneName),
             enabled: false,
           ),
+          const Divider(),
+          const _Header('Home screen'),
+          ListTile(
+            leading: const Icon(Icons.widgets_outlined),
+            title: const Text('Add the widget'),
+            subtitle: const Text("Today's commitments, without opening the app"),
+            onTap: _busy ? null : _pinWidget,
+          ),
           if (kDebugMode) ...[
             const Divider(),
             const _Header('Developer'),
@@ -88,6 +97,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  /// Asks the launcher to offer a one-tap "add widget".
+  ///
+  /// Here rather than nowhere because widget discovery on Android is dreadful:
+  /// long-press the wallpaper, find Widgets, scroll an alphabetical list of
+  /// every app installed. A widget nobody can find is a widget nobody has.
+  ///
+  /// Android reports whether the launcher *showed* its dialog, never what the
+  /// user chose, so the success message says the offer was made and nothing
+  /// more. Claiming "added" would be a lie roughly half the time.
+  Future<void> _pinWidget() async {
+    setState(() => _busy = true);
+    try {
+      final offered = await ref.read(widgetBridgeProvider).requestPin();
+      if (!mounted) return;
+      setState(() => _status = offered
+          ? 'Look for the confirmation from your home screen.'
+          : 'This launcher will not add widgets for you. Long-press your '
+              'home screen, choose Widgets, and find Riyaz.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _export() async {

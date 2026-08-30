@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the widget picker and the pin dialog show before any data exists.
+
+  A separate layout from the real one, with plausible content baked in. The
+  alternative is `initialLayout`, which is what this widget used to offer the
+  picker — and an unbound widget's TextViews are empty, so the picker drew a
+  blank rectangle. A preview nobody can read is a widget nobody places.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="?android:attr/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="@string/widget_preview_date"
+            android:textColor="?android:attr/textColorPrimary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:text="@string/widget_preview_progress"
+            android:textColor="?android:attr/textColorSecondary" />
+    </LinearLayout>
+
+    <TextView style="@style/RiyazWidgetRow" android:text="@string/widget_preview_row_1" />
+    <TextView style="@style/RiyazWidgetRow" android:text="@string/widget_preview_row_2" />
+    <TextView style="@style/RiyazWidgetRow" android:text="@string/widget_preview_row_3" />
+</LinearLayout>

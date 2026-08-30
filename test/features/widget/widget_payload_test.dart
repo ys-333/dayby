@@ -115,17 +115,29 @@ void main() {
       expect(WidgetPayload.fromView(view, 'x').progressLabel, '1/1');
     });
 
-    test('icons are carried through, absent ones as empty strings', () {
+    test('the commitment icon is never sent, whatever it holds', () {
+      // It used to be, and it worked for exactly as long as `Commitment.icon`
+      // was an emoji. Once the vocabulary became glyph *keys* the widget began
+      // prepending the key itself — every row would have read "run Running ✓"
+      // — and nothing failed, because the widget had never been drawn.
+      //
+      // It cannot come back as a key either: the widget is RemoteViews in the
+      // launcher's process and has no access to the Material icon font Flutter
+      // bundles as an app asset.
       final view = TodayView(
         date: d(2026, 8, 28),
         items: [
-          item(name: 'Running', status: OccurrenceStatus.pending, icon: '🏃'),
+          item(name: 'Running', status: OccurrenceStatus.pending, icon: 'run'),
+          item(name: 'Legacy', status: OccurrenceStatus.pending, icon: '🏃'),
           item(name: 'Plain', status: OccurrenceStatus.pending),
         ],
       );
-      final payload = WidgetPayload.fromView(view, 'x');
-      expect(payload.rows[0].icon, '🏃');
-      expect(payload.rows[1].icon, '');
+      final rows = (jsonDecode(WidgetPayload.fromView(view, 'x').encode())
+          as Map<String, dynamic>)['rows'] as List;
+      for (final row in rows.cast<Map<String, dynamic>>()) {
+        expect(row.containsKey('icon'), isFalse);
+        expect(row.values.join(), isNot(contains('run')));
+      }
     });
   });
 
@@ -146,7 +158,7 @@ void main() {
       expect(json.keys.toSet(),
           {'dateLabel', 'progressLabel', 'isEmpty', 'rows'});
       final row = (json['rows'] as List).single as Map<String, dynamic>;
-      expect(row.keys.toSet(), {'id', 'label', 'glyph', 'detail', 'icon'});
+      expect(row.keys.toSet(), {'id', 'label', 'glyph', 'detail'});
       expect(row['label'], 'Running');
       expect(row['glyph'], '✓');
     });
@@ -156,13 +168,12 @@ void main() {
         date: d(2026, 8, 28),
         items: [
           item(name: 'Café — 5km', status: OccurrenceStatus.done, completed: 1,
-              icon: '🏋️'),
+              icon: 'gym'),
         ],
       );
       final encoded = WidgetPayload.fromView(view, 'x').encode();
       final row = ((jsonDecode(encoded) as Map)['rows'] as List).single as Map;
       expect(row['label'], 'Café — 5km');
-      expect(row['icon'], '🏋️');
     });
   });
 }

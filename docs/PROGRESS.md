@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 428 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 434 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -90,7 +90,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 428 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 434 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1334,3 +1334,55 @@ the app — the scrollbar or the phone's own edge handle, visible as a vertical
 bar at the right of every screenshot — swallows touches in that strip. Worth
 recording so the next person does not go looking for it in the code, and worth
 a glance during the feel check with a real thumb.
+
+### The widget, and the bug that hid inside "never executed"
+
+434 tests pass (428 before, 6 new). The Kotlin ran for the first time.
+
+**The icon migration broke the widget, silently.** `WidgetRow` carried
+`Commitment.icon` and the Kotlin prepended it to the row text. That worked for
+exactly as long as the field held an emoji. Since schema v4 it holds a glyph
+*key*, so every row would have read **"run Running  ✓"**. Nothing failed
+anywhere: `widget_payload_test.dart` fed it emoji and asserted they came out
+the other end, which tests the plumbing and not the vocabulary, and the widget
+itself had never been drawn on a screen.
+
+The field is gone from both sides rather than fixed. It cannot come back as a
+key: the widget is `RemoteViews` inflated in the **launcher's** process, which
+has no access to the Material icon font Flutter bundles as an app asset, so
+there is nothing there that could turn "run" into a runner. A name and a status
+glyph is the honest content for that surface. The replacement test asserts no
+row carries an icon field at all and bites when one is put back.
+
+**The widget could not be placed, and now it can be offered.**
+`AppWidgetManager.requestPinAppWidget` is wired to a Settings tile. Widget
+discovery on Android is genuinely bad — long-press the wallpaper, find Widgets,
+scroll an alphabetical list of every app installed — and a feature nobody can
+find is a feature nobody has. Android reports only whether the launcher
+*showed* its dialog, never what the user chose, so the success message says the
+offer was made and nothing more.
+
+**The picker had nothing to show.** `riyaz_widget_info.xml` offered
+`initialLayout` as its preview, and an unbound widget's TextViews are empty, so
+the picker drew a blank rectangle. There is a `previewLayout` now with
+plausible content in it — deliberately plausible rather than aspirational, since
+a preview with every row ticked sets the expectation this product spends its
+whole design refusing to set.
+
+### What is still unverified about the widget
+
+**The drawing code has still never run.** `render()` and `applyPayload()` need
+a placed instance, and none exists, so the honest state of this is unchanged
+for those two methods.
+
+The reason is worth writing down: this phone's launcher is
+`com.qqlabs.minimalistlauncher` — "minimalist phone" — which does not host
+widgets at all. That is why `isRequestPinAppWidgetSupported` returned false,
+and it is not an app defect. `com.android.launcher3` is installed on the device
+and does host widgets, so completing this check means switching the default
+launcher temporarily. That is the user's phone and the user's call.
+
+What *was* verified on device: the method channel executes end to end for the
+first time, `AppWidgetManager` is reachable, the pin path degrades to an
+accurate message rather than appearing to do nothing, and the provider
+registers with the system carrying its declared size, update period and layout.

@@ -173,6 +173,13 @@ void main() {
       final originalId = await seed();
       await h.pump(tester, const SettingsScreen());
 
+      // Last section on a screen that has grown; a ListView builds only
+      // what is on screen.
+      await tester.dragUntilVisible(
+        find.text('Load synthetic data'),
+        find.byType(ListView),
+        const Offset(0, -200),
+      );
       await tester.tap(find.text('Load synthetic data'));
       await tester.pumpAndSettle();
 
@@ -195,6 +202,13 @@ void main() {
       await seed();
       await h.pump(tester, const SettingsScreen());
 
+      // Last section on a screen that has grown; a ListView builds only
+      // what is on screen.
+      await tester.dragUntilVisible(
+        find.text('Load synthetic data'),
+        find.byType(ListView),
+        const Offset(0, -200),
+      );
       await tester.tap(find.text('Load synthetic data'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
