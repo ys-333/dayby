@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 332 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 355 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -57,7 +57,7 @@ has four tabs: Today, History, Insights, Settings.
 |------|------|
 | `docs/specs/2026-08-28-…md` | product spec (Kotlin-era; stack section is obsolete) |
 | `lib/domain/` | pure Dart engines — no Flutter, no Drift, injected `Clock` |
-| `lib/data/` | Drift schema v2, repositories, backup codec, seeder loader |
+| `lib/data/` | Drift schema v3, repositories, backup codec, seeder loader |
 | `lib/features/<name>/` | one folder per screen area |
 | `tool/check_arch.sh` | enforces domain purity + clock discipline |
 
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 332 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 355 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -672,12 +672,10 @@ decisions:
 
 - [x] **Insights: the load warning reads as an error** — `widget`. See below.
 - [x] **History: period rows break the week grid** — `unit`, `widget`. See below.
-- [~] **Detail: three actions are missing entirely.** Archive, unarchive and
-      edit are built (below). Pause is not — it needs the schema v3 migration
-      recorded in `docs/TODO.md`. No edit, no pause, no
-      archive anywhere in `commitment_detail_screen.dart`. The board also
-      replaces the stat wall with one lead figure and a *dated* twelve-week
-      grid. This is missing function, not only layout.
+- [~] **Detail: three actions are missing entirely.** All three are now built
+      — archive and unarchive, edit, and pause and resume (below). What is
+      left of this board is layout: the stat wall becomes one lead figure and
+      a *dated* twelve-week grid.
 - [x] **Today: the structure the device pass complained about** — `unit`,
       `widget`. All three findings answered. See below.
 
@@ -889,3 +887,65 @@ is a `String` that is serialised into the backup format, so that is a data
 migration and belongs to its own commit. `CommitmentIcon` is the seam — one
 widget, so the vocabulary changes in one file.
 
+### Pause, and the schema change under it
+
+The last missing action, and the only remaining work that could damage a
+database. Logic verified: `flutter analyze` clean, `tool/check_arch.sh` clean,
+355 tests pass (332 before, 23 new). **Not feel verified.**
+
+**The trap was real, and it was silent.** `CommitmentState.paused` exists on
+the model and has never had a single reader — `lib/domain/` consults
+`PausePeriods` and nothing else (`recurrence_engine.dart:34`,
+`accounting_engine.dart:162`). A Pause button wired to the flag would show the
+banner, flip the menu to Resume, and let the engine go on expecting a run every
+day, banking a miss for each one. It is the archive bug's exact shape, and it
+would have passed every screen-level test.
+
+So the test that carries the claim goes through the menu and then resolves
+**sixty days past the pause**, asserting nothing resolves at all. Verified
+non-vacuous the hard way: making a pause cover only its own first day fails
+twelve of the nineteen tests in `pause_test.dart`.
+
+**Schema v3: `pause_periods.to_day` becomes nullable.** "Pause until I resume"
+is the common case — an injury, a trip of unknown length — and making the user
+name a return date turns a pause into a second thing to be late for. Null
+rather than a far-future sentinel, because a sentinel leaks: into `covers()`,
+into any arithmetic over the span, and into the backup file, which
+`backup_codec.dart` keeps human-readable precisely so a damaged one can be
+repaired by hand. A reader finding `"to": "9999-12-31"` has to know the
+convention; a reader finding `"to": null` does not.
+
+SQLite cannot drop NOT NULL in place, so v3 is a `TableMigration` rebuild.
+`migration_test.dart` now carries a real v2 fixture — DDL dumped from a live
+v2 `sqlite_master`, not retyped — and asserts across the rebuild that every
+existing pause keeps its id and its dates, that a dated pause does not become
+open-ended, that the foreign key still cascades into the recreated table, and
+that a null `to` is storable afterwards. Removing the migration step fails that
+last one, which is the check that the whole thing exists for.
+
+**The format contract cost more than the column, as expected.**
+`BackupDocument.currentVersion` is 2. That number's only job is refusal: a
+build that reads only v1 must not take a null `to` for a corrupt record, and
+"update the app and try again" is the honest answer. v1 files still import,
+because a v1 pause always carried a date. `"to": null` is written explicitly
+rather than the key omitted — otherwise "still paused" and "field lost in a
+truncated write" are the same bytes — while the *reader* accepts both
+spellings, since someone repairing a file by hand is as likely to delete the
+line as to type `null`.
+
+**At most one open pause per commitment.** Two would both cover every future
+day, and resuming would close one and leave the other still suspending
+everything — a state the user can neither see nor escape. Starting a pause
+closes any open one the day before the new one begins; pausing and resuming on
+the same day leaves a pause covering nothing, and that row is deleted rather
+than stored, for the same reason `updateCommitment` amends rather than closing
+a schedule at `on - 1`. The closing helper is plural and unconditional despite
+the invariant, because a database restored from a hand-edited backup can arrive
+holding two, and repairing that quietly beats honouring it.
+
+Resume invalidates rollups from the pause's **start** rather than from the
+resume date. Only later days change status, so the narrow range would do — but
+a rollup is a cache, and rebuilding a few extra days costs less than one stale
+row that nothing ever corrects.
+
+`_resolutionVersion` did **not** move. The rule is unchanged; only the data is.

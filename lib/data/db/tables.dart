@@ -83,7 +83,11 @@ class PausePeriods extends Table {
   TextColumn get commitmentId =>
       text().references(Commitments, #id, onDelete: KeyAction.cascade)();
   IntColumn get fromDay => integer().map(const CivilDateConverter())();
-  IntColumn get toDay => integer().map(const CivilDateConverter())();
+
+  /// Inclusive last paused day. **Nullable since schema v3**: null is an open
+  /// pause, running until the user resumes. See `PausePeriod.to`.
+  IntColumn get toDay =>
+      integer().map(const CivilDateConverter()).nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

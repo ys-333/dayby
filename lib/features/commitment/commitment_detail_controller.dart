@@ -6,6 +6,7 @@ import 'package:riyaz/domain/analytics/analytics_engine.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
 import 'package:riyaz/domain/model/commitment.dart';
 import 'package:riyaz/domain/model/frequency.dart';
+import 'package:riyaz/domain/model/pause_period.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
 
@@ -83,6 +84,33 @@ Stream<CommitmentDetail?> commitmentDetail(Ref ref, String commitmentId) {
 }
 
 
+/// The commitment's open-ended pause, if it has one.
+///
+/// A separate stream rather than a field on [CommitmentDetail], for the same
+/// reason `currentFrequency` is a separate read: the detail stream reports
+/// *resolved history*, which has no business carrying the schedule or the
+/// pause table, and widening `ResolvedHistory` for one menu label would make
+/// history, analytics and insights all pay for a field only this screen looks
+/// at.
+///
+/// The range is a single day because pauses are never filtered by date —
+/// `TrackingRepository.read` loads the whole table on every call, so the
+/// narrowest possible window still sees every pause, including one that
+/// started years ago.
+@riverpod
+Stream<PausePeriod?> openPause(Ref ref, String commitmentId) {
+  final today = ref.watch(todayProvider);
+  return ref
+      .watch(trackingRepositoryProvider)
+      .watch(CivilDateRange(today, today))
+      .map((snapshot) {
+    for (final pause in snapshot.pausesFor(commitmentId)) {
+      if (pause.isOpen) return pause;
+    }
+    return null;
+  });
+}
+
 /// The writes the detail screen can make.
 ///
 /// Kept beside the read model so the two stay in view of each other: every
@@ -110,6 +138,40 @@ class CommitmentActions {
   /// Puts it back in the list and reopens the schedule archiving closed.
   Future<void> unarchive(String commitmentId) =>
       repository.unarchiveCommitment(commitmentId);
+
+  /// Suspends the commitment from today, with no end date.
+  ///
+  /// Open-ended on purpose: the honest answer to "how long?" is usually "I
+  /// don't know yet", and making the user commit to a return date turns a
+  /// pause into a second thing to be late for.
+  ///
+  /// Paused days are NOT_EXPECTED — the recurrence engine emits no occurrence
+  /// for them, so they can never turn MISSED. That is the whole point, and it
+  /// is why this writes a `PausePeriod` rather than setting
+  /// `CommitmentState.paused`, which nothing in `lib/domain/` reads.
+  Future<void> pause(String commitmentId) =>
+      repository.pauseCommitment(commitmentId: commitmentId, from: today);
+
+  /// Ends the open pause. Today is expected again; yesterday was not.
+  ///
+  /// Returns the day the pause began, which is what [restorePause] needs to
+  /// put it back.
+  Future<CivilDate?> resume(String commitmentId) =>
+      repository.resumeCommitment(commitmentId: commitmentId, on: today);
+
+  /// Undo for [resume]: reopens a pause covering the same days again.
+  ///
+  /// A new row with a new id, not a resurrection of the old one. The user is
+  /// undoing a *state* — "I am still paused" — and the identity of the record
+  /// carrying it is not something they can see or care about.
+  Future<void> restorePause(String commitmentId, CivilDate from) =>
+      repository.pauseCommitment(commitmentId: commitmentId, from: from);
+
+  /// Undo for [pause]: resuming on the same day the pause began leaves it
+  /// covering no day at all, and the repository deletes it rather than storing
+  /// an end that precedes its own start.
+  Future<void> cancelPause(String commitmentId, CivilDate from) =>
+      repository.resumeCommitment(commitmentId: commitmentId, on: from);
 
   /// The frequency in force today.
   ///

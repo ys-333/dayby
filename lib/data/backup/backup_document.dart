@@ -23,7 +23,14 @@ class BackupDocument {
 
   /// Bumped only when the on-disk shape changes incompatibly. Readers refuse
   /// anything newer than they understand rather than guessing.
-  static const int currentVersion = 1;
+  ///
+  /// * **1** — the original shape.
+  /// * **2** — `pause.to` may be null, meaning a pause that is still open.
+  ///   A build that reads only v1 would take a null `to` for a corrupt record;
+  ///   refusing the whole file with "update the app" is the honest answer, and
+  ///   that refusal is exactly what this number buys. v1 files still import,
+  ///   because a v1 pause always carried a date.
+  static const int currentVersion = 2;
 
   static const String formatTag = 'riyaz.backup';
 
