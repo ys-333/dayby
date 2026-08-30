@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 403 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 404 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -91,7 +91,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 403 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 404 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1140,18 +1140,42 @@ so the eye lands on exactly the two things left; the glyphs read as one family;
 the period group separates; the twelve-week grid draws its month ruler, weekday
 labels and credited-day dots, with no per-day status for a period target.
 
-### Open after the device run
+### The strip was too loud, and it was using the wrong vocabulary
 
-**The strip may be too loud, and it is a real question rather than a nit.**
-`BandColors` was designed for a 34dp calendar cell with a numeral inside it, and
-a weak day is carried by ring *weight* — 2.5px — so that it reads without
-colour. On the strip's 24dp cell that same ring is proportionally half again as
-heavy, there is no numeral to soften it, and fourteen cells sit shoulder to
-shoulder directly beneath the day's headline. With honest mediocre data — nine
-of thirteen settled days weak — it reads as a row of alarms under "Two left
-today", which is the opposite of what the countdown is for.
+Raised as a feel question after the device run and answered by the user: make a
+weak day a faint fill. Chasing the *reason* turned it from a colour swap into a
+correction.
 
-The data is not wrong and clay is the correct band. The question is whether a
-component built for a calendar can be reused at 70% of its size without its
-weights being re-solved. Left for the user: it is a feel judgement, and Claude
-does not make those.
+`BandColors` is the **calendar's** language — rings, weights, clay — and it was
+solved for a 34dp cell with a numeral inside, where a weak day is carried by
+ring *weight* (2.5px) so that it reads without colour. The strip reused it at
+24dp with no numeral: the same ring is proportionally half again as heavy, and
+fourteen of them shoulder to shoulder sat directly under a headline whose whole
+purpose is to refuse to score you. With honest mediocre data — nine of thirteen
+settled days weak — it read as a row of alarms.
+
+The right vocabulary was already there and already said so. `Palette.heat` is a
+five-step sequential ramp, and its own doc explains that the calendar samples
+only `heat[1]` and `heat[4]` because a mid-tone fill cannot carry a numeral —
+*"the full ramp is for a grid with no text in it."* The strip is the only such
+grid in the app, and it was the one component not using it. It is also exactly
+what the board drew: five fills, no rings, no clay anywhere on this component.
+
+    none → heat[0]   weak → heat[1]   partial → heat[2]   strong → heat[4]
+    future → outline only
+
+Step 3 is skipped on purpose. [DayBand] has nothing between partial and strong,
+so leaving the gap there spends the ramp's largest jump on the one boundary
+worth noticing rather than in the middle, where it would say nothing.
+
+**Lightness alone is allowed here and nowhere else**, so the reason is recorded
+in `_Cell`'s doc rather than left to be rediscovered. A monotonic ramp *is* a
+non-colour encoding. Past that, the strip states no per-day verdict, nothing in
+it is tappable, its entire content is spoken in one semantic label, and every
+day it shows is dated, labelled and individually reachable on the history
+screen. The calendar cannot lean on lightness because a reader has to
+distinguish *this* day from *that* one; here they only have to see a shape.
+
+The test asserts every cell is a ramp **fill**, that only today carries a
+border, and that clay appears nowhere in the strip. Putting the clay ring back
+fails it with `cell 0 has no fill`.

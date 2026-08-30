@@ -206,10 +206,9 @@ Claude never makes it.
       seeded year. Found two bugs no test could: the 14-day strip collapsed to
       zero height, and "A target every a week". Both fixed and pinned.
 - [ ] **Feel check:** create and track in under 10 seconds on a real phone.
-- [ ] **Is the strip too loud?** `BandColors` was solved for a 34dp calendar
-      cell with a numeral in it; the strip reuses it at 24dp with none. Nine
-      clay rings shoulder to shoulder under the headline read as a row of
-      alarms. Feel judgement — see `PROGRESS.md`.
+- [x] **The strip was too loud** — answered and fixed. It is the heat ramp
+      now, all fills, no rings, no clay, which is what the board drew and what
+      `Palette.heat`'s own doc reserves the full ramp for.
 - [ ] **Widget device check:** place it, confirm it renders, updates, and that
       tapping opens the app. The Kotlin has never executed.
 - [ ] Week grid, Insights, the rebuilt Today and the rebuilt commitment detail

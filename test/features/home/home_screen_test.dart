@@ -11,6 +11,7 @@ import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
 import 'package:riyaz/features/home/home_screen.dart';
 import 'package:riyaz/features/home/widgets/commitment_tile.dart';
+import 'package:riyaz/app/theme/palette.dart';
 import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/features/home/today_controller.dart';
 import 'package:riyaz/features/home/widgets/period_tile.dart';
@@ -187,6 +188,33 @@ void main() {
         expect(size.height, Sizes.stripCell,
             reason: 'cell $i collapsed to ${size.height}dp');
         expect(size.width, greaterThan(0));
+      }
+    });
+
+    testWidgets('every settled day is a fill on the ramp, never a ring',
+        (tester) async {
+      await addCommitment(name: 'Running');
+      await pumpHome(tester);
+
+      final palette = Palette.of(Brightness.light);
+      final cells = find.descendant(
+        of: find.byType(RecentStrip),
+        matching: find.byType(DecoratedBox),
+      );
+
+      for (var i = 0; i < recentStripLength; i++) {
+        final box = tester.widget<DecoratedBox>(cells.at(i));
+        final decoration = box.decoration as BoxDecoration;
+
+        // The strip is a density ramp, not a status readout. A clay ring here
+        // read as an alarm on a device — see `_Cell`'s doc — and no cell may
+        // carry one again. The only border allowed is today's marker.
+        expect(decoration.color, isNotNull, reason: 'cell $i has no fill');
+        expect(palette.heat, contains(decoration.color),
+            reason: 'cell $i is off the heat ramp');
+        expect(decoration.border == null || i == recentStripLength - 1, isTrue,
+            reason: 'cell $i has a ring, and only today may');
+        expect(decoration.color, isNot(palette.clay));
       }
     });
 
