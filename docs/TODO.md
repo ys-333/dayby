@@ -222,6 +222,10 @@ Claude never makes it.
 - [x] **The strip was too loud** — answered and fixed. It is the heat ramp
       now, all fills, no rings, no clay, which is what the board drew and what
       `Palette.heat`'s own doc reserves the full ramp for.
+- [ ] **Right-edge taps.** Synthetic taps at x≥985 on a 1080-wide screen do
+      not reach the app; x=955 does. Almost certainly the phone's edge handle
+      or a scrollbar, not the app — but check with a real thumb that the week
+      grid's review button is comfortable to hit.
 - [ ] **Widget device check:** place it, confirm it renders, updates, and that
       tapping opens the app. The Kotlin has never executed.
 - [ ] Week grid, Insights, the rebuilt Today and the rebuilt commitment detail

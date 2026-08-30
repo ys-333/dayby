@@ -1,5 +1,7 @@
 import 'package:go_router/go_router.dart';
 
+import '../domain/time/civil_date.dart';
+
 import '../features/add_commitment/add_commitment_screen.dart';
 import '../features/commitment/commitment_detail_screen.dart';
 import '../features/review/week_review_screen.dart';
@@ -18,6 +20,15 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: 'review',
           builder: (context, state) => const WeekReviewScreen(),
+          routes: [
+            GoRoute(
+              path: ':week',
+              builder: (context, state) => WeekReviewScreen(
+                weekStart:
+                    CivilDate.parse(state.pathParameters['week']!),
+              ),
+            ),
+          ],
         ),
         GoRoute(
           path: 'commitment/:id',

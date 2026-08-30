@@ -5,6 +5,7 @@ import 'package:riyaz/app/glyphs.dart';
 import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/app/theme/tokens.dart';
 import 'package:riyaz/app/theme/type_roles.dart';
+import 'package:riyaz/domain/time/civil_date.dart';
 
 import 'week_review_controller.dart';
 
@@ -21,12 +22,21 @@ import 'week_review_controller.dart';
 /// descriptions of two commitments, never as praise or a reprimand, and the
 /// screen closes on recovery rather than on the miss count.
 class WeekReviewScreen extends ConsumerWidget {
-  const WeekReviewScreen({super.key});
+  const WeekReviewScreen({this.weekStart, super.key});
+
+  /// Which week to review. Null means the most recent closed one — the case
+  /// the prompt on Today opens.
+  ///
+  /// Any past week can be reopened from the history screen. Without that a
+  /// review could be read exactly once and never again, which would make
+  /// dismissing it a small irreversible act on a screen whose whole subject is
+  /// that nothing is ever lost.
+  final CivilDate? weekStart;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final week = ref.watch(lastClosedWeekProvider);
-    final review = ref.watch(weekReviewProvider(week.start));
+    final start = weekStart ?? ref.watch(lastClosedWeekProvider).start;
+    final review = ref.watch(weekReviewProvider(start));
 
     return Scaffold(
       appBar: AppBar(
@@ -40,9 +50,8 @@ class WeekReviewScreen extends ConsumerWidget {
       body: review.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
-        data: (data) => data.hasResult
-            ? _Body(review: data)
-            : const _NothingToReview(),
+        data: (data) =>
+            data.hasResult ? _Body(review: data) : const _NothingToReview(),
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(
@@ -59,6 +68,12 @@ class WeekReviewScreen extends ConsumerWidget {
     );
   }
 
+  /// Closing marks the *pending* week read, whichever week is on screen.
+  ///
+  /// Reopening an old one from history and closing it again must not undo
+  /// that: the marker means "the user has been shown everything up to here",
+  /// and dragging it backwards would make a prompt they already dealt with
+  /// reappear.
   Future<void> _dismiss(BuildContext context, WidgetRef ref) async {
     await ref.read(reviewActionsProvider).dismiss();
     if (context.mounted) Navigator.of(context).maybePop();
@@ -76,81 +91,106 @@ class _Body extends StatelessWidget {
     final muted = theme.colorScheme.onSurfaceVariant;
     final summary = review.summary;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        Insets.rowH,
-        Insets.titleGap * 4,
-        Insets.rowH,
-        Insets.xl,
+    // Centred in whatever room is left, rather than stacked from the top.
+    //
+    // This screen is a single complete statement shown once, with a Done
+    // button under it — closer to a dialog than to a list. Top-anchored, its
+    // few short blocks ended two thirds of the way up a tall phone and the
+    // remaining space read as a page that had run out of things to say, which
+    // is a poor note to end a week on. Centred, the same content reads as
+    // composed and the space becomes margin.
+    //
+    // `ConstrainedBox` against the viewport rather than a plain `Center`: the
+    // content is short *today*, and at 1.8x text scale or with a long
+    // commitment name wrapping it is taller than the screen. This centres
+    // while it fits and scrolls the moment it does not.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          Insets.rowH,
+          Insets.titleGap * 4,
+          Insets.rowH,
+          Insets.xl,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight:
+                constraints.maxHeight - (Insets.titleGap * 4 + Insets.xl),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${fullDayLabel(review.week.start)} – '
+                '${fullDayLabel(review.week.end)}',
+                style: theme.textTheme.footnote?.copyWith(color: muted),
+              ),
+              const SizedBox(height: Insets.rowH),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    '${summary.percent}%',
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: Insets.rowTrailingGap),
+                  Flexible(
+                    child: Text(
+                      'consistency',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Insets.titleGap * 2),
+              Text(
+                'Of ${summary.eligible} '
+                '${summary.eligible == 1 ? 'occurrence' : 'occurrences'} that were '
+                'yours to make',
+                style: theme.textTheme.footnote?.copyWith(color: muted),
+              ),
+              const SizedBox(height: Insets.rowH),
+              Wrap(
+                spacing: Insets.xl,
+                runSpacing: Insets.rowTrailingGap,
+                children: [
+                  _Count('Completed', summary.done),
+                  _Count('Partial', summary.partial),
+                  _Count('Missed', summary.missed),
+                  _Count('Skipped', summary.skipped, excluded: true),
+                ],
+              ),
+              if (review.namesAreMeaningful) ...[
+                const SizedBox(height: Insets.xl),
+                _Named(
+                  overline: 'Went best',
+                  entry: review.best!,
+                  tinted: true,
+                ),
+                const SizedBox(height: Insets.rowH),
+                // "Hardest", not "needs attention". The spec's own wording instructs
+                // the user; the product principle two sections later says the app
+                // describes behaviour and does not judge. A week can be hard without
+                // anyone having failed at it, and the row that names it should not
+                // arrive as a task.
+                _Named(
+                  overline: 'Hardest',
+                  entry: review.hardest!,
+                  tinted: false,
+                ),
+              ],
+              if (review.averageRecoveryDays != null) ...[
+                const SizedBox(height: Insets.xl),
+                _Recovery(days: review.averageRecoveryDays!),
+              ],
+            ],
+          ),
+        ),
       ),
-      children: [
-        Text(
-          '${fullDayLabel(review.week.start)} – '
-          '${fullDayLabel(review.week.end)}',
-          style: theme.textTheme.footnote?.copyWith(color: muted),
-        ),
-        const SizedBox(height: Insets.rowH),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              '${summary.percent}%',
-              style: theme.textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: Insets.rowTrailingGap),
-            Flexible(
-              child: Text(
-                'consistency',
-                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Insets.titleGap * 2),
-        Text(
-          'Of ${summary.eligible} '
-          '${summary.eligible == 1 ? 'occurrence' : 'occurrences'} that were '
-          'yours to make',
-          style: theme.textTheme.footnote?.copyWith(color: muted),
-        ),
-        const SizedBox(height: Insets.rowH),
-        Wrap(
-          spacing: Insets.xl,
-          runSpacing: Insets.rowTrailingGap,
-          children: [
-            _Count('Completed', summary.done),
-            _Count('Partial', summary.partial),
-            _Count('Missed', summary.missed),
-            _Count('Skipped', summary.skipped, excluded: true),
-          ],
-        ),
-        if (review.namesAreMeaningful) ...[
-          const SizedBox(height: Insets.xl),
-          _Named(
-            overline: 'Went best',
-            entry: review.best!,
-            tinted: true,
-          ),
-          const SizedBox(height: Insets.rowH),
-          // "Hardest", not "needs attention". The spec's own wording instructs
-          // the user; the product principle two sections later says the app
-          // describes behaviour and does not judge. A week can be hard without
-          // anyone having failed at it, and the row that names it should not
-          // arrive as a task.
-          _Named(
-            overline: 'Hardest',
-            entry: review.hardest!,
-            tinted: false,
-          ),
-        ],
-        if (review.averageRecoveryDays != null) ...[
-          const SizedBox(height: Insets.xl),
-          _Recovery(days: review.averageRecoveryDays!),
-        ],
-      ],
     );
   }
 }
@@ -313,7 +353,11 @@ class _Recovery extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.replay_rounded, size: 18, color: context.statusColors.done),
+          Icon(
+            Icons.replay_rounded,
+            size: 18,
+            color: context.statusColors.done,
+          ),
           const SizedBox(width: Insets.rowTrailingGap),
           Expanded(
             child: Column(

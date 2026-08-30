@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/domain/model/frequency.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/domain/time/civil_date.dart';
@@ -224,6 +226,126 @@ void main() {
       await h.pump(tester, const HomeScreen());
       await tester.pumpAndSettle();
       expect(find.text('Last week is in'), findsNothing);
+    });
+  });
+
+
+  group('reopening an old week', () {
+    testWidgets('a past week can be reviewed again after dismissal',
+        (tester) async {
+      final id = await daily('Running');
+      await weekOf(id, [1, 2, 3]);
+
+      // Read it once and close it.
+      await h.pump(tester, const WeekReviewScreen());
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      // Reopened explicitly, by date. Dismissing a review is a small
+      // irreversible act otherwise, on a screen whose entire subject is that
+      // nothing is ever lost.
+      await h.pump(tester, WeekReviewScreen(weekStart: d(2026, 8, 17)));
+      expect(find.text('Monday, Aug 17 – Sunday, Aug 23'), findsOneWidget);
+      expect(find.textContaining('consistency'), findsOneWidget);
+    });
+
+    testWidgets('closing an old week does not resurrect a handled prompt',
+        (tester) async {
+      final id = await daily('Running');
+      await weekOf(id, [1, 2, 3]);
+      await record(id, d(2026, 8, 10));
+
+      await h.pump(tester, const WeekReviewScreen());
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      // Open a week from a fortnight earlier and close that too. The marker
+      // means "shown everything up to here", so it must not travel backwards.
+      await h.pump(tester, WeekReviewScreen(weekStart: d(2026, 8, 10)));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      await h.pump(tester, const HomeScreen());
+      expect(find.text('Last week is in'), findsNothing);
+    });
+  });
+
+  group('geometry', () {
+    // Reached by a push, so it is not in the polish suite's list of tab
+    // screens — the same gap that let an overflowing twelve-week grid nearly
+    // ship. Centring the content makes this worth checking twice: the layout
+    // only centres while the content fits, and has to scroll the moment it
+    // does not.
+    for (final (label, size, scale) in [
+      ('a small phone', const Size(320, 568), 1.0),
+      ('a large text scale', const Size(400, 800), 1.8),
+      ('both at once', const Size(320, 568), 1.8),
+      ('landscape', const Size(800, 400), 1.0),
+    ]) {
+      testWidgets('renders and scrolls at $label', (tester) async {
+        final strong = await daily('Running every single morning');
+        final weak = await daily('Reading before bed', icon: 'read');
+        await weekOf(strong, [1, 2, 3, 4, 5, 6, 7]);
+        await weekOf(weak, [1]);
+        for (final day in [1, 2, 3, 8, 9, 10, 20, 21, 22]) {
+          await record(strong, d(2026, 7, 1).plusDays(day));
+        }
+
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: MaterialApp(
+              theme: riyazTheme(Brightness.light),
+              home: h.scope(const WeekReviewScreen()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'first frame');
+
+        for (var i = 0; i < 4; i++) {
+          await tester.drag(
+            find.byType(SingleChildScrollView),
+            const Offset(0, -240),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'after scroll $i');
+        }
+      });
+    }
+
+    testWidgets('the Done button stays reachable when content overflows',
+        (tester) async {
+      final id = await daily('Running');
+      await weekOf(id, [1, 2, 3]);
+
+      tester.view.physicalSize = const Size(320, 480);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.8)),
+          child: MaterialApp(
+            theme: riyazTheme(Brightness.light),
+            home: h.scope(const WeekReviewScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // It is a bottomNavigationBar rather than the last child of the scroll
+      // view precisely so that a cramped screen cannot bury the only way out.
+      expect(find.text('Done'), findsOneWidget);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/app/formatting.dart';
 import 'package:riyaz/app/providers.dart';
@@ -135,6 +136,16 @@ class WeekGrid extends ConsumerWidget {
                   atLatest ? null : ref.read(visibleWeekProvider.notifier).next,
               icon: const Icon(Icons.chevron_right_rounded),
               tooltip: 'Next week',
+            ),
+            // Only for a week that is over. A review states a final result,
+            // and the week in progress does not have one yet — the same rule
+            // that stops the review screen ever looking at the current week.
+            IconButton(
+              onPressed: atLatest
+                  ? null
+                  : () => context.push('/review/${weekStart.iso}'),
+              icon: const Icon(Icons.summarize_outlined),
+              tooltip: 'Review this week',
             ),
           ],
         ),

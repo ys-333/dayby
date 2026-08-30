@@ -14,7 +14,7 @@ dart run build_runner build --delete-conflicting-outputs   # *.g.dart and
                                     # *.freezed.dart are gitignored, so a
                                     # fresh clone will not analyze until this
                                     # has run
-./tool/check_arch.sh && flutter analyze && flutter test     # expect 421 green
+./tool/check_arch.sh && flutter analyze && flutter test     # expect 428 green
 ```
 
 **State:** all ten build phases are complete, committed and pushed to
@@ -90,7 +90,7 @@ Two claims are tracked separately and neither implies the other:
 
 **Phase:** all ten build phases complete → remaining items need a device or a decision
 **Blocked on:** nothing
-**Last verified state:** 421 tests green, `flutter analyze` clean project-wide,
+**Last verified state:** 428 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -1290,3 +1290,47 @@ review does not reappear.
 Verified against four mutations: reviewing the current week, dropping the tie
 check, removing the empty-week gate, and failing to persist the dismissal each
 fail the suite.
+
+### The review, after seeing it on glass
+
+Two changes, both found by looking at the built screen rather than at the code.
+428 tests pass (421 before, 7 new).
+
+**The content is centred now, not stacked from the top.** Six short blocks
+ended two thirds of the way up a tall phone, and the space underneath read as a
+page that had run out of things to say — a poor note on which to end a week.
+The screen is a single complete statement shown once with a Done button under
+it, closer to a dialog than to a list, and centred it reads as composed.
+
+Not a plain `Center`: `LayoutBuilder` → `SingleChildScrollView` →
+`ConstrainedBox(minHeight: viewport)` → `Column(center)`. The content is short
+*today*, with two commitments and one recovery line; at 1.8× text scale, or
+with a long name wrapping, it is taller than the screen. This centres while it
+fits and scrolls the moment it does not — the same failure the trend chart's
+axis gutter hit one commit earlier.
+
+**A dismissed review was unreachable, and a doc comment claimed otherwise.**
+`ReviewActions.dismiss()` said the review "is reachable again from History",
+which was simply untrue — nothing there opened it. That made dismissal a small
+irreversible act on a screen whose entire subject is that nothing is ever lost.
+The week grid now has a review button for any week that is **over**, the screen
+takes an optional week, and `/review/:week` routes to it.
+
+Closing an old review still marks only the *pending* week read. The marker
+means "shown everything up to here", so dragging it backwards would make a
+prompt the user had already dealt with reappear. Two tests cover that.
+
+Four geometry tests were added at the same time, at 320dp, 1.8×, both, and
+landscape, plus one asserting the Done button stays reachable on a cramped
+320×480 — which is why it is a `bottomNavigationBar` rather than the last child
+of the scroll view. This screen is reached by a push, so like the commitment
+detail screen it was never in the polish suite's list of tab screens.
+
+**One thing that looked like a bug and was not.** Synthetic taps on the new
+review button did nothing on the device, at four different x positions, while
+the same button worked in a widget test against the real router. It turned out
+to be positional: a tap at x=955 fires it, x≥985 does not. Something outside
+the app — the scrollbar or the phone's own edge handle, visible as a vertical
+bar at the right of every screenshot — swallows touches in that strip. Worth
+recording so the next person does not go looking for it in the code, and worth
+a glance during the feel check with a real thumb.

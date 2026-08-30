@@ -183,8 +183,13 @@ class ReviewActions {
   final ReviewRepository repository;
   final CivilDateRange week;
 
-  /// Marks the closed week read. Deliberately not undoable: nothing was
-  /// written to history, and the review is reachable again from History for as
-  /// long as the data exists.
+  /// Marks the most recent closed week read.
+  ///
+  /// Deliberately not undoable: nothing was written to history, and any week
+  /// can be reopened from the history screen for as long as its data exists.
+  ///
+  /// Always the *pending* week, never the one being viewed. Reopening an old
+  /// review and closing it again must not drag the marker backwards and make
+  /// a prompt the user already dealt with reappear.
   Future<void> dismiss() => repository.markSeen(week.start);
 }
