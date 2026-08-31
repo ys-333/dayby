@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Scheduled reminders. Android throws every pending alarm away on
+         reboot, so the plugin re-registers them from its own store and needs
+         to be told the device came back up.
+
+         Deliberately NOT declared: SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM.
+         A habit reminder does not need minute precision, and on Android 14
+         exact alarms are restricted to genuine alarm-clock and calendar apps.
+         Reminders schedule with inexactAllowWhileIdle instead. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Riyaz"
         android:allowBackup="true"
@@ -33,6 +42,24 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Posts a scheduled reminder when its alarm fires. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+
+        <!-- Re-registers every pending reminder after a reboot or an app
+             update. Without this, reminders die at the next restart. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".RiyazWidgetProvider"
