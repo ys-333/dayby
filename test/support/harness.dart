@@ -6,7 +6,10 @@ import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/app/theme/riyaz_theme.dart';
 import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
+import 'package:riyaz/features/notifications/notification_gateway.dart';
 import 'package:riyaz/features/settings/backup_controller.dart';
+
+import 'fake_notification_gateway.dart';
 import 'package:riyaz/app/resolution.dart';
 import 'package:riyaz/app/settings.dart';
 import 'package:riyaz/data/backup/backup_service.dart';
@@ -34,6 +37,9 @@ class Harness {
   late final TrackingRepository repo;
 
   DateTime get nowUtc => clock.nowUtc();
+
+  /// Reminders the screen under test scheduled.
+  final FakeNotificationGateway notifications = FakeNotificationGateway();
 
   /// Files written by the screen under test, path to contents.
   ///
@@ -131,6 +137,11 @@ class Harness {
           clockProvider.overrideWithValue(clock),
           backupFileStoreProvider
               .overrideWithValue(_InMemoryFileStore(writtenFiles)),
+          // Without this the real gateway reaches for platform channels during
+          // a pumpAndSettle. Its failures are swallowed, so nothing breaks —
+          // which is worse: every widget test would quietly exercise the error
+          // path instead of the behaviour it means to test.
+          notificationGatewayProvider.overrideWithValue(notifications),
         ],
         child: child,
       );

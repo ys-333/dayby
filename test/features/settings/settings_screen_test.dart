@@ -47,6 +47,15 @@ void main() {
   testWidgets('shows the accounting settings that make dates meaningful',
       (tester) async {
     await h.pump(tester, const SettingsScreen());
+    // Scrolled to, not assumed on screen: the Reminders and Appearance
+    // sections now sit above Accounting, so this row is below the fold on a
+    // test-sized viewport.
+    await tester.scrollUntilVisible(
+      find.text('Day starts at'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Day starts at'), findsOneWidget);
     expect(find.text('4:00'), findsOneWidget);
     expect(find.text('Asia/Kolkata'), findsOneWidget);

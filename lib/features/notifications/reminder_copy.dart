@@ -63,6 +63,28 @@ abstract final class ReminderCopy {
     );
   }
 
+  /// What a review notification says when its week has **not closed yet** at
+  /// the moment it is scheduled.
+  ///
+  /// This is the ordinary case, not an edge one, and it is a real limit of the
+  /// pre-render architecture rather than an oversight. The review fires on the
+  /// first morning of a new week, reporting the week before it — but the
+  /// notification has to be handed to the platform *days earlier*, while that
+  /// week is still running and its percentage does not exist yet. A number
+  /// composed then would be a guess.
+  ///
+  /// The whole job of this notification is to reach someone who has not opened
+  /// the app; if they had, the review card on Today would already be waiting for
+  /// them. So it invites rather than reports, and
+  /// [weeklyReview] is used only in the narrower case where the app was opened
+  /// after the week closed and before the reminder fired — which a reschedule
+  /// on resume turns into the real, numbered copy.
+  static const ReminderText weeklyReviewPending = ReminderText(
+    title: 'Last week',
+    body: 'Your week is ready to look at.',
+    lines: ['Your week is ready to look at.'],
+  );
+
   /// The week that just closed, or null when the week has no result.
   ///
   /// [previousPercent] is the week before it, when one exists — a new install

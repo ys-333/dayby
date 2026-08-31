@@ -4,12 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/app/theme_preference.dart';
+import 'package:riyaz/domain/notifications/reminder_settings.dart';
+import 'package:riyaz/features/notifications/reminder_settings_controller.dart';
 import 'package:riyaz/data/backup/backup_document.dart';
 import 'package:riyaz/data/backup/backup_service.dart';
 import 'package:riyaz/data/seed/seed_loader.dart';
 import 'package:riyaz/domain/seed/synthetic_seeder.dart';
 import 'package:riyaz/features/home/today_controller.dart';
-import 'package:riyaz/features/notifications/notification_spike.dart';
 
 import 'backup_controller.dart';
 
@@ -68,6 +69,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _Header('Appearance'),
           const _ThemeModeTile(),
           const Divider(),
+          const _Header('Reminders'),
+          const _RemindersSection(),
+          const Divider(),
           const _Header('Accounting'),
           ListTile(
             leading: const Icon(Icons.schedule_rounded),
@@ -97,12 +101,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Load synthetic data'),
               subtitle: const Text('A year of generated history'),
               onTap: _busy ? null : _loadSeed,
-            ),
-            ListTile(
-              leading: const Icon(Icons.notifications_active_outlined),
-              title: const Text('Notification spike'),
-              subtitle: const Text('Schedule two test reminders, +2 and +15 min'),
-              onTap: _busy ? null : _runNotificationSpike,
             ),
           ],
         ],
@@ -224,22 +222,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'Imported ${result.inserted} records'
           '${result.skipped > 0 ? ', skipped ${result.skipped} already present' : ''}'
           '${result.dropped > 0 ? ', dropped ${result.dropped} orphaned' : ''}.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  /// **THROWAWAY.** Remove with `notification_spike.dart` before Phase 3.
-  ///
-  /// Answers the one question the test suite cannot: does this phone actually
-  /// deliver a scheduled notification, and does it survive a reboot?
-  Future<void> _runNotificationSpike() async {
-    setState(() => _busy = true);
-    try {
-      final zone = ref.read(accountingCalendarProvider).zone;
-      final result = await NotificationSpike(zone).run();
-      if (!mounted) return;
-      setState(() => _status = result.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -414,6 +396,101 @@ class _PreviewDialog extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Both reminders default off, and the OS permission is requested on first
+/// enable rather than at startup — asking before the user has shown interest is
+/// how an app gets permanently denied.
+class _RemindersSection extends ConsumerWidget {
+  const _RemindersSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(reminderSettingsControllerProvider);
+    final controller = ref.read(reminderSettingsControllerProvider.notifier);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.notifications_outlined),
+          title: const Text('Daily reminder'),
+          subtitle: const Text("What's still open today"),
+          value: settings.dailyEnabled,
+          onChanged: (want) => _apply(
+            context,
+            () => controller.setDailyEnabled(want),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.schedule_outlined),
+          title: const Text('Remind me at'),
+          subtitle: Text(
+            ReminderPreference.encodeTime(settings.hour, settings.minute),
+          ),
+          // Only reachable once something is actually being sent. A time picker
+          // above two off switches configures nothing.
+          enabled: settings.dailyEnabled || settings.weeklyReviewEnabled,
+          onTap: () => _pickTime(context, ref, settings),
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.calendar_month_outlined),
+          title: const Text('Weekly review'),
+          subtitle: const Text('When a week closes'),
+          value: settings.weeklyReviewEnabled,
+          onChanged: (want) => _apply(
+            context,
+            () => controller.setWeeklyReviewEnabled(want),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Text(
+            'Delivery can drift by a few minutes. Riyaz asks Android for a '
+            'relaxed alarm so reminders never need the permission an alarm '
+            'clock does.',
+            style: TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Runs a toggle and explains a refusal rather than silently reverting.
+  static Future<void> _apply(
+    BuildContext context,
+    Future<bool> Function() change,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (await change()) return;
+
+    // The switch never moved, because nothing was stored. Saying why is the
+    // whole point: a toggle reading "on" while Android blocks delivery is a lie
+    // the user cannot debug.
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Android is blocking notifications for Riyaz. Turn them on in '
+          'system settings, then try again.',
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _pickTime(
+    BuildContext context,
+    WidgetRef ref,
+    ReminderSettings settings,
+  ) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: settings.hour, minute: settings.minute),
+    );
+    if (picked == null) return;
+    await ref
+        .read(reminderSettingsControllerProvider.notifier)
+        .setTime(picked.hour, picked.minute);
   }
 }
 

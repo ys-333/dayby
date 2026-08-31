@@ -14,6 +14,8 @@ import 'package:riyaz/domain/time/civil_date.dart';
 import 'package:riyaz/domain/time/clock.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import 'package:riyaz/features/notifications/reminder_scheduler.dart';
+
 import 'resolution.dart';
 import 'theme_preference.dart';
 import 'settings.dart';
@@ -106,7 +108,19 @@ RollupRepository rollupRepository(Ref ref) {
     ref.watch(appDatabaseProvider),
     ref.watch(resolutionServiceProvider),
   );
-  tracking.onWrite = rollups.markStale;
+  // Two things go stale on a write, and both are caches over the canonical
+  // records: the materialised rollups, and the *pre-rendered* reminders. The
+  // second is the whole reason the notification architecture is safe — text
+  // composed days ago can be wrong, and a write is one of the two moments that
+  // has the app alive and the engines available to fix it.
+  //
+  // `ref.read` rather than `watch`, and inside the callback rather than out:
+  // resolving the scheduler eagerly here would close a loop back through the
+  // tracking repository this provider is building.
+  tracking.onWrite = (from) async {
+    await rollups.markStale(from);
+    await ref.read(reminderSchedulerProvider).reschedule();
+  };
   ref.onDispose(() => tracking.onWrite = null);
   return rollups;
 }
