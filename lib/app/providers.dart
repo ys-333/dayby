@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/db/connection.dart';
 import 'package:riyaz/data/repository/rollup_repository.dart';
+import 'package:riyaz/data/repository/settings_repository.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/data/system_clock.dart';
 import 'package:riyaz/domain/accounting/accounting_engine.dart';
@@ -22,8 +23,38 @@ part 'providers.g.dart';
 @Riverpod(keepAlive: true)
 Clock clock(Ref ref) => const SystemClock();
 
+/// What the app started with — the row values `main()` read from the database
+/// before the first frame, or the compiled defaults on a fresh install.
+///
+/// Overridden in `main()` rather than loaded here, and that is the whole trick:
+/// `accountingCalendarProvider` watches the settings and the entire engine graph
+/// watches *that*, so a `Future`-returning settings provider would turn every
+/// downstream provider async and ripple into every screen and every widget test.
+/// Reading the database once, ahead of `runApp`, keeps all of it synchronous.
+///
+/// Tests that do not care about persistence get the defaults for free.
 @Riverpod(keepAlive: true)
-AppSettings appSettings(Ref ref) => const AppSettings();
+AppSettings initialAppSettings(Ref ref) => const AppSettings();
+
+@Riverpod(keepAlive: true)
+SettingsRepository settingsRepository(Ref ref) =>
+    SettingsRepository(ref.watch(appDatabaseProvider));
+
+/// The live settings, and the only way to change them.
+///
+/// Persists first and updates state second, so a failed write leaves the app
+/// showing what is actually stored rather than a value that survives only until
+/// the next restart.
+@Riverpod(keepAlive: true)
+class AppSettingsController extends _$AppSettingsController {
+  @override
+  AppSettings build() => ref.watch(initialAppSettingsProvider);
+
+  Future<void> update(AppSettings next) async {
+    await ref.read(settingsRepositoryProvider).save(next);
+    state = next;
+  }
+}
 
 @Riverpod(keepAlive: true)
 AppDatabase appDatabase(Ref ref) {
@@ -56,7 +87,7 @@ RollupRepository rollupRepository(Ref ref) {
 
 @Riverpod(keepAlive: true)
 AccountingCalendar accountingCalendar(Ref ref) {
-  final settings = ref.watch(appSettingsProvider);
+  final settings = ref.watch(appSettingsControllerProvider);
   return AccountingCalendar(
     zone: tz.getLocation(settings.timezoneName),
     dayBoundaryHour: settings.dayBoundaryHour,

@@ -95,15 +95,53 @@ Two claims are tracked separately and neither implies the other:
 
 ## Current position
 
-**Phase:** all ten build phases complete → remaining items need a device or a decision
-**Blocked on:** nothing
-**Last verified state:** 436 tests green, `flutter analyze` clean project-wide,
+**Phase:** notifications — Phase 0 of 6 done (`docs/specs/2026-09-01-notifications.md`)
+**Blocked on:** nothing. Phases 1–2 are pure domain and need no device.
+**Last verified state:** 453 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
 
 Data safety landed before the widget, deliberately: a lost phone meant total
 data loss until Phase 9, and that cost rose every day the app was used.
+
+### Notifications — Phase 0: settings persist (2026-09-01)
+
+- [x] `SettingsRepository` over the existing key-value `settings` table —
+      `unit` (11). **The spec was wrong about needing a schema v5 migration.**
+      The table has existed since v1, is registered in `@DriftDatabase`, and is
+      already used by `ReviewRepository` and `RollupRepository`. What was
+      missing was a repository for *user* preferences. `schemaVersion` stays 4
+      and this feature adds no migration at all.
+- [x] `AppSettings` stopped being a compile-time constant — `unit` (6).
+      `appSettings` is now `AppSettingsController`, a keepAlive notifier seeded
+      from `initialAppSettingsProvider`; `main()` reads the database once before
+      `runApp` and overrides that. **The point is what did *not* happen:** the
+      accounting calendar watches the settings and the whole engine graph
+      watches the calendar, so an async settings provider would have turned
+      every downstream provider async and rippled into 436 tests. One await
+      ahead of the first frame kept all of them synchronous.
+- [x] A write survives a restart — `unit`. Proved with a second
+      `ProviderContainer` over the same database, which is what a kill and
+      reopen actually is. **Verified non-vacuous**: deleting the `save()` call
+      from `update()` fails 2 of the 6.
+- [x] Malformed rows cannot stop the app opening — `unit`. Out-of-range values
+      fall back to the default and are **left in place, not corrected**: a day
+      boundary of 25 would not throw, it would silently mis-date every record in
+      the database. Rewriting a value we only guessed at would destroy whatever
+      the user meant.
+- [x] Cold-starts on hardware — `device`, `build`. iQOO I2019 (Android 14),
+      fresh debug APK built and installed immediately before the observation.
+      The startup path changed — `main()` now opens the database and awaits a
+      read before `runApp` — so this needed checking rather than assuming. No
+      `FATAL`, no `E/flutter`; `MainActivity` reached `topResumedActivity` and
+      the Today screen rendered its empty state. The install wipes the database,
+      so this also exercised the fresh-install-boots-on-defaults path on real
+      hardware.
+      **Feel is still unverified** and remains the user's claim, not this one.
+
+Dark mode is now roughly thirty lines on top of this: one key in the same
+table, one segmented control, one line in `app.dart:14`.
 
 ---
 

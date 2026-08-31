@@ -14,7 +14,7 @@ BackupService backupService(Ref ref) => BackupService(
       repository: ref.watch(trackingRepositoryProvider),
       rollups: ref.watch(rollupRepositoryProvider),
       clock: ref.watch(clockProvider),
-      settings: ref.watch(appSettingsProvider),
+      settings: ref.watch(appSettingsControllerProvider),
     );
 
 /// Where an export lands, and how it gets off the device.

@@ -26,7 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final settings = ref.watch(appSettingsProvider);
+    final settings = ref.watch(appSettingsControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),

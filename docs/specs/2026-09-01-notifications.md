@@ -1,6 +1,6 @@
 # Notifications — spec and build plan
 
-**Status:** spiked, not built. `flutter_local_notifications ^22.3.0` is in,
+**Status:** Phase 0 done, Phases 1–2 next. `flutter_local_notifications ^22.3.0` is in,
 the manifest and Gradle are wired, and a throwaway spike is installed on the
 iQOO awaiting a delivery observation. No phase in §9 has started.
 **Decision 1 (the package) is answered — yes**, 2026-09-01. Decision 2 (weekly
@@ -255,13 +255,19 @@ OS blocks delivery is a lie the user cannot debug.
 
 ## 6. Data model
 
-### `app_settings` table (schema v5)
+### The settings table already exists — no migration needed
 
-Single-row key-value, not a typed column per setting: it absorbs the dark-mode
-preference, and later C and D, without another migration each time.
+**Correction to this spec's first draft, found when Phase 0 started.** The
+draft called for a new `app_settings` table at schema v5. That was wrong.
+`lib/data/db/tables.dart` has carried a key-value `Settings` table **since
+schema v1**, it is registered in `@DriftDatabase`, and two repositories already
+read and write it — `ReviewRepository` (`review.lastSeenWeek`) and
+`RollupRepository` (`rollup.staleFrom`, `rollup.coveredTo`,
+`rollup.logicVersion`).
 
 ```dart
-class AppSettingsRows extends Table {
+@DataClassName('SettingRow')
+class Settings extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
   @override
@@ -269,20 +275,18 @@ class AppSettingsRows extends Table {
 }
 ```
 
-Keys added here: `reminder.daily.enabled`, `reminder.daily.time` (`HH:mm`),
-`reminder.weekly.enabled`. Absent key → the default in `AppSettings`, so the
-migration creates an **empty** table and no backfill is needed.
+So **schemaVersion stays 4** and there is no migration in this feature at all.
+What was missing was never the table — it was a repository for *user
+preferences* and the wiring that makes `AppSettings` come from it.
 
-Migration step, following the established pattern in `app_database.dart`:
+Keys follow the established `namespace.camelCase` convention:
+`settings.timezone`, `settings.dayBoundaryHour`, `settings.weekStartsOn`, and
+later `settings.themeMode` and `reminder.daily.*`. An absent key falls back to
+the default compiled into `AppSettings`, so a fresh install needs no seeding.
 
-```dart
-if (from < 5) {
-  // v5 adds user preferences. Empty on creation: every key falls back to the
-  // default already compiled into AppSettings, so there is nothing to backfill
-  // and nothing that can fail.
-  await m.createTable(appSettingsRows);
-}
-```
+Values are parsed defensively, following `ReviewRepository`'s stated reasoning:
+a settings row is a string, and a hand-repaired backup can put anything in it —
+an unreadable value means "use the default" rather than a crash at startup.
 
 ### Backup format — unchanged, deliberately
 
@@ -355,11 +359,21 @@ nothing may be built on it.
 
 ### Phase 0 — Settings persist (prerequisite; also unblocks dark mode)
 
-- [ ] `app_settings` table + schema v5 migration — `migration`
-- [ ] `SettingsRepository` load/save, defaults on absent keys — `unit`
-- [ ] `main()` loads before `runApp`; providers overridden and still synchronous — `widget`
-- [ ] A settings write round-trips across an app restart — `unit`
-- [ ] Existing 436 tests still green — the provider graph changed shape
+- [x] ~~`app_settings` table + schema v5 migration~~ — **not needed.** The
+      table has existed since v1 and is already in use. See §6.
+- [x] `SettingsRepository` load/save, defaults on absent keys — `unit` (11)
+- [x] `main()` loads before `runApp`; providers overridden and still
+      synchronous — `unit` (6). `appSettings` became
+      `AppSettingsController`, a keepAlive notifier seeded from
+      `initialAppSettingsProvider`, which `main()` overrides with one read taken
+      before the first frame. Every downstream provider stayed synchronous;
+      only three call sites existed and all three still do a plain
+      `ref.watch`.
+- [x] A settings write round-trips across an app restart — `unit`. Proved with
+      a second `ProviderContainer` over the same database, which is what a kill
+      and reopen actually is. **Verified non-vacuous**: removing the `save()`
+      call from `update()` fails 2 of the 6.
+- [x] Existing tests still green — 436 → 453, analyze clean, `check_arch.sh` ok
 
 ### Phase 1 — Domain: when does it fire
 
