@@ -140,8 +140,35 @@ data loss until Phase 9, and that cost rose every day the app was used.
       hardware.
       **Feel is still unverified** and remains the user's claim, not this one.
 
-Dark mode is now roughly thirty lines on top of this: one key in the same
-table, one segmented control, one line in `app.dart:14`.
+### Dark / light mode (2026-09-01)
+
+- [x] Three-way choice — System / Light / Dark — `unit` (8), `device`.
+      A switch would have been a downgrade for anyone whose phone already
+      changes theme on a schedule, so "System" is a stored choice rather than
+      the absence of one.
+- [x] **Kept out of `AppSettings`, deliberately.** That class holds settings
+      that change how stored data is *interpreted*, and its three fields travel
+      inside every backup. A theme choice interprets nothing: restoring a backup
+      onto a new phone and finding the theme at its default is correct rather
+      than data loss, and carrying it would have forced
+      `BackupDocument.currentVersion` to 3 and made every older build refuse the
+      file over a cosmetic preference. It lives in the same key-value table
+      under its own key, with its own provider. `currentVersion` stays 2.
+- [x] Read in `main()` alongside the accounting settings — `unit`. Not watched
+      asynchronously: a provider resolving after the first frame would paint
+      light and snap to dark, which is the flash every dark-mode implementation
+      is judged by.
+- [x] `lib/data/` stayed Flutter-free — `build`. `ThemeMode` is a Flutter type,
+      so the repository gained a raw `readRaw`/`writeRaw` pair and the
+      vocabulary lives in `lib/app/theme_preference.dart`. Phase 5's reminder
+      settings will reuse that pair.
+- [x] Persisted on hardware — `device`. iQOO, fresh APK: the Appearance control
+      rendered between Data and Accounting, and tapping Light wrote
+      `settings.themeMode|light` to the device database, leaving the two
+      `rollup.*` rows in the shared table untouched.
+      **Not visually confirmed in light theme** — the phone moved to another app
+      before that screenshot. Dark renders correctly; the light render rests on
+      the unit tests and on both themes having shipped since the palette work.
 
 ---
 
