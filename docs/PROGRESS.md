@@ -95,9 +95,10 @@ Two claims are tracked separately and neither implies the other:
 
 ## Current position
 
-**Phase:** notifications — Phases 0–2 of 6 done (`docs/specs/2026-09-01-notifications.md`)
-**Blocked on:** nothing. Phase 3 is the platform gateway; the package is approved and spiked.
-**Last verified state:** 507 tests green, `flutter analyze` clean project-wide,
+**Phase:** notifications — Phases 0–5 of 6 done (`docs/specs/2026-09-01-notifications.md`).
+**Only Phase 6 remains, and it is device work the user signs, not code.**
+**Blocked on:** nothing buildable.
+**Last verified state:** 542 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -199,6 +200,53 @@ data loss until Phase 9, and that cost rose every day the app was used.
       Both paths are asserted **unable to scold**, including on a 20% week —
       which is exactly when the copy must not moralise.
 - Phases 1 and 2 needed no device and no package: 46 tests, all deterministic.
+
+### Notifications — Phases 3, 4 and 5 (2026-09-01)
+
+- [x] **Phase 3, the gateway** — `unit` (11), `device`.
+      Interface plus in-memory double, following `BackupFileStore`. The double
+      went into the shared harness, and that mattered more than it looks:
+      without it every widget test was quietly exercising the real gateway's
+      *error* path rather than the behaviour it meant to test.
+      Failure-swallowing is tested by running the **real** gateway under
+      `flutter test`, where there is no platform and every channel call genuinely
+      throws — the log shows errors being caught, so this is not merely an
+      absence of errors.
+      A monochrome `ic_notification` drawable replaces the launcher icon, which
+      Android silhouetted into a featureless white blob.
+      **The throwaway spike is deleted.**
+      Device: the real gateway creates the `riyaz.reminders` channel on a fresh
+      install and schedules **zero** alarms — what default-off looks like from
+      outside the app.
+- [x] **Phase 4, the wiring** — `unit` (12).
+      Reschedules on foreground resume and on **every tracking write**, chained
+      onto the existing `onWrite` hook beside rollup invalidation: both are
+      caches over the canonical records and a write makes both stale.
+      **Cancellation falls out of rescheduling rather than having its own path**
+      — a finished day composes no copy, so it is simply absent from the
+      replacement set. One mechanism, so the two cannot drift.
+      `todayViewFrom` was extracted so a notification and the Today screen are
+      built by the *same function*; a notification listing different commitments
+      from the screen it opens would be worse than no notification.
+      A gateway failure cannot take a tracking write down with it — asserted
+      directly, because the event is canonical and the reminder is not.
+- [x] **Phase 5, the settings** — `unit`/`widget` (12).
+      Two switches and a time picker, both off by default. **A permission
+      refusal changes nothing and says why**: nothing is stored and the switch
+      does not move, because a toggle reading "on" while Android blocks delivery
+      is a lie the user cannot debug. Turning a reminder *off* never asks for
+      permission. Verified rendering on device.
+- One regression caught and fixed: an existing settings test asserted
+  "Day starts at" was on screen, which the new sections pushed below the fold.
+  It now scrolls.
+
+**The finding worth carrying:** the weekly review's *percentage cannot be
+pre-rendered*. The review fires on the first morning of a new week reporting the
+week before — but the notification is handed to the platform days earlier, while
+that week is still running, so a number composed then would be a guess. The
+scheduled copy therefore invites rather than reports, and the numbered form is
+used only when the app happens to be opened after the week closed and before the
+reminder fires. That is a limit of the architecture, not a bug in it.
 
 ---
 

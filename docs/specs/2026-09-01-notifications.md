@@ -1,6 +1,6 @@
 # Notifications — spec and build plan
 
-**Status:** Phases 0–2 done. Phase 3 (the gateway) is next. `flutter_local_notifications ^22.3.0` is in,
+**Status:** Phases 0–5 done and committed. Only **Phase 6, the device checks, remains, and those are the user's.** `flutter_local_notifications ^22.3.0` is in,
 the manifest and Gradle are wired, and a throwaway spike is installed on the
 iQOO awaiting a delivery observation. No phase in §9 has started.
 **Decision 1 (the package) is answered — yes**, 2026-09-01. Decision 2 (weekly
@@ -426,13 +426,70 @@ here needs a widget pumped; it is pure functions over plain objects.
 - [x] Same day carrying both posts the review only — covered in Phase 1, where
       the decision is made.
 
-### Phase 3 — Gateway
+### Phase 3 — Gateway — **done**, `unit` (11), `device`
 
-- [ ] Add `flutter_local_notifications` — **needs approval** (§11)
-- [ ] `NotificationGateway` interface + in-memory double — `unit`
-- [ ] Real implementation: channel, permission request, `zonedSchedule`, cancel-all — `build`
-- [ ] Manifest permissions + boot receiver + monochrome icon — `build`
-- [ ] Failures swallowed and logged, never rethrown — `unit`
+- [x] `NotificationGateway` interface + in-memory double, following
+      `BackupFileStore`. The double is now in the shared harness, because
+      without it every widget test quietly exercised the real gateway's *error*
+      path instead of the behaviour it meant to test.
+- [x] Real implementation: channel, permission request, `zonedSchedule` with
+      `inexactAllowWhileIdle`, cancel and cancel-all.
+- [x] **Monochrome `ic_notification` drawable.** Android silhouettes the small
+      icon, so the launcher icon the spike used rendered as a featureless white
+      blob.
+- [x] Failures swallowed and logged, never rethrown — `unit`. Tested by running
+      the *real* gateway under `flutter test`, where there is no platform and
+      every channel call genuinely throws. Not an absence of errors: the log
+      shows them being caught.
+- [x] **The throwaway spike is deleted**, along with its debug Settings tile.
+- [x] Verified on device: the `riyaz.reminders` channel is created by the real
+      gateway on a fresh install, and **zero alarms are scheduled**, which is
+      what default-off should look like from outside.
+
+### Phase 4 — Wiring — **done**, `unit` (12)
+
+- [x] `ReminderScheduler` composes the three pure pieces and posts. It re-derives
+      nothing: `ReminderSchedule` decides when, `ReminderCopy` decides what.
+- [x] Reschedule on foreground resume (`AppLifecycleListener`) and on **every
+      tracking write** (chained onto the existing `onWrite` hook beside the
+      rollup invalidation — both are caches over the canonical records, and a
+      write makes both stale).
+- [x] **Cancellation falls out of rescheduling rather than needing its own
+      path.** A finished day composes no copy, so it simply is not in the
+      replacement set. One mechanism, so the two cannot drift.
+- [x] Changing the day boundary reschedules everything — `unit`. Verified by
+      the ids changing, since they derive from the accounting date.
+- [x] `todayViewFrom` extracted so the notification and the Today screen are
+      built by the **same function**. A notification listing different
+      commitments from the screen it opens would be worse than none.
+- [x] A gateway failure never breaks the write that triggered it — `unit`. The
+      tracking event is canonical; the notification is a convenience over it.
+- [x] Tap payload routes to `/` and `/review` — the payload is decided in Dart,
+      so the platform never has to know what screens exist.
+
+**Finding, recorded because it is a real limit and not an oversight:** the
+weekly review's *percentage cannot be pre-rendered*. The review fires on the
+first morning of a new week reporting the week before it — but the notification
+is handed to the platform days earlier, while that week is still running. A
+number composed then would be a guess. So the scheduled copy invites ("Your week
+is ready to look at") and the numbered form is used only when the app was opened
+after the week closed and before the reminder fired, which a reschedule on
+resume upgrades into.
+
+### Phase 5 — Settings UI — **done**, `unit`/`widget` (12)
+
+- [x] Reminders section between Appearance and Accounting: two switches and a
+      time picker.
+- [x] **First enable requests permission; a denial changes nothing and says
+      why** — `widget`. Nothing is stored and the switch does not move, because
+      a toggle reading "on" while Android blocks delivery is a lie the user
+      cannot debug. Turning a reminder *off* never asks for permission.
+- [x] Off by default on a fresh install — `widget`, and confirmed on device.
+- [x] The time row is disabled until something is actually being sent — a time
+      picker above two off switches configures nothing.
+- [x] A malformed stored time falls back **as a whole** rather than half-parsed:
+      an hour of 25 would not throw, it would schedule at a time that does not
+      exist and fail silently.
 
 ### Phase 4 — Wiring
 

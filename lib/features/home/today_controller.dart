@@ -2,7 +2,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/app/providers.dart';
 import 'package:riyaz/data/repository/tracking_repository.dart';
 import 'package:riyaz/domain/model/commitment.dart';
+import 'package:riyaz/domain/accounting/accounting_engine.dart';
 import 'package:riyaz/domain/analytics/consistency_summary.dart';
+import 'package:riyaz/domain/recurrence/recurrence_engine.dart';
 import 'package:riyaz/domain/analytics/day_band.dart';
 import 'package:riyaz/domain/model/tracking_event.dart';
 import 'package:riyaz/domain/time/accounting_calendar.dart';
@@ -29,44 +31,72 @@ Stream<TodayView> todayView(Ref ref, CivilDate date) {
   final accounting = ref.watch(accountingEngineProvider);
   final clock = ref.watch(clockProvider);
 
-  // Period targets are judged over their whole week or month, so the snapshot
-  // has to reach wider than the day being shown or a "2 / 4 this week" row
-  // would only ever see today's single event.
+  final range = todayViewRange(calendar, date);
+
+  return repo.watch(range).map(
+        (snapshot) => todayViewFrom(
+          snapshot: snapshot,
+          date: date,
+          recurrence: recurrence,
+          accounting: accounting,
+          clock: clock,
+        ),
+      );
+}
+
+/// The range a day's view has to read to be correct.
+///
+/// Wider than the day itself: period targets are judged over their whole week
+/// or month, so a snapshot narrowed to one day would leave a "2 / 4 this week"
+/// row seeing only today's single event.
+CivilDateRange todayViewRange(AccountingCalendar calendar, CivilDate date) {
   final month = calendar.periodContaining(PeriodScope.monthly, date);
   final week = calendar.periodContaining(PeriodScope.weekly, date);
-  final range = CivilDateRange(
+  return CivilDateRange(
     week.start < month.start ? week.start : month.start,
     week.end > month.end ? week.end : month.end,
   );
+}
 
-  return repo.watch(range).map((snapshot) {
-    final items = <TodayItem>[];
+/// Builds one accounting day's view from a snapshot.
+///
+/// Extracted so the reminder scheduler composes its notification text from
+/// **this** function rather than a parallel implementation. A notification
+/// listing different commitments from the screen it opens would be worse than
+/// no notification, and two copies of this loop would eventually drift.
+TodayView todayViewFrom({
+  required TrackingSnapshot snapshot,
+  required CivilDate date,
+  required RecurrenceEngine recurrence,
+  required AccountingEngine accounting,
+  required Clock clock,
+}) {
+  final items = <TodayItem>[];
 
-    for (final commitment in snapshot.commitments) {
-      // Archived commitments keep their history but leave the daily list.
-      if (commitment.state == CommitmentState.archived) continue;
-      if (date < commitment.startedOn) continue;
+  for (final commitment in snapshot.commitments) {
+    // Archived commitments keep their history but leave the daily list.
+    if (commitment.state == CommitmentState.archived) continue;
+    if (date < commitment.startedOn) continue;
 
-      final occurrences = recurrence.occurrencesIn(
-        commitmentId: commitment.id,
-        schedules: snapshot.schedulesFor(commitment.id),
-        pauses: snapshot.pausesFor(commitment.id),
-        range: CivilDateRange(date, date),
-      );
-      if (occurrences.isEmpty) continue;
+    final occurrences = recurrence.occurrencesIn(
+      commitmentId: commitment.id,
+      schedules: snapshot.schedulesFor(commitment.id),
+      pauses: snapshot.pausesFor(commitment.id),
+      range: CivilDateRange(date, date),
+    );
+    if (occurrences.isEmpty) continue;
 
-      items.add(TodayItem(
-        commitment: commitment,
-        resolved: accounting.resolve(
-          occurrence: occurrences.first,
-          events: snapshot.events,
-          clock: clock,
-        ),
-      ));
-    }
+    items.add(TodayItem(
+      commitment: commitment,
+      resolved: accounting.resolve(
+        occurrence: occurrences.first,
+        events: snapshot.events,
+        clock: clock,
+      ),
+    ));
+  }
 
-    return TodayView(date: date, items: items);
-  });
+  return TodayView(date: date, items: items);
 }
 
 /// One cell in the recent-days strip above the list.

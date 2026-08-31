@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'app/app.dart';
 import 'app/providers.dart';
 import 'app/theme_preference.dart';
+import 'features/notifications/reminder_settings_controller.dart';
 import 'data/db/app_database.dart';
 import 'data/db/connection.dart';
 import 'data/repository/settings_repository.dart';
@@ -31,6 +32,7 @@ Future<void> main() async {
   final themeMode = ThemePreference.decode(
     await repository.readRaw(ThemePreference.key),
   );
+  final reminders = await ReminderPreference.load(repository);
 
   runApp(
     ProviderScope(
@@ -38,6 +40,7 @@ Future<void> main() async {
         appDatabaseProvider.overrideWithValue(database),
         initialAppSettingsProvider.overrideWithValue(settings),
         initialThemeModeProvider.overrideWithValue(themeMode),
+        initialReminderSettingsProvider.overrideWithValue(reminders),
       ],
       child: const RiyazApp(),
     ),
