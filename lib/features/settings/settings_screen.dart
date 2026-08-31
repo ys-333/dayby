@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riyaz/app/providers.dart';
+import 'package:riyaz/app/theme_preference.dart';
 import 'package:riyaz/data/backup/backup_document.dart';
 import 'package:riyaz/data/backup/backup_service.dart';
 import 'package:riyaz/data/seed/seed_loader.dart';
@@ -63,6 +64,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(fontSize: 12),
             ),
           ),
+          const Divider(),
+          const _Header('Appearance'),
+          const _ThemeModeTile(),
           const Divider(),
           const _Header('Accounting'),
           ListTile(
@@ -409,6 +413,40 @@ class _PreviewDialog extends StatelessWidget {
           child: const Text('Replace all'),
         ),
       ],
+    );
+  }
+}
+
+/// Three states rather than a switch: dropping "System" would be a downgrade
+/// for anyone whose phone already changes theme on a schedule.
+class _ThemeModeTile extends ConsumerWidget {
+  const _ThemeModeTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(themeModeControllerProvider);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: SegmentedButton<ThemeMode>(
+        segments: [
+          for (final mode in ThemePreference.choices)
+            ButtonSegment(
+              value: mode,
+              label: Text(ThemePreference.label(mode)),
+              icon: Icon(switch (mode) {
+                ThemeMode.system => Icons.brightness_auto_outlined,
+                ThemeMode.light => Icons.light_mode_outlined,
+                ThemeMode.dark => Icons.dark_mode_outlined,
+              }),
+            ),
+        ],
+        selected: {selected},
+        showSelectedIcon: false,
+        onSelectionChanged: (choice) => ref
+            .read(themeModeControllerProvider.notifier)
+            .select(choice.first),
+      ),
     );
   }
 }

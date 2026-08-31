@@ -70,6 +70,21 @@ class SettingsRepository {
         await _write(weekStartKey, '${settings.weekStartsOn}');
       });
 
+  /// Reads one raw value, for a preference whose type belongs to a layer this
+  /// one cannot import.
+  ///
+  /// `lib/data/` is Flutter-free and `ThemeMode` is a Flutter type, so the
+  /// caller owns the vocabulary and the fallback. The reminder settings in
+  /// Phase 5 will use the same pair.
+  Future<String?> readRaw(String key) async {
+    final row = await (_db.select(_db.settings)
+          ..where((t) => t.key.equals(key)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> writeRaw(String key, String value) => _write(key, value);
+
   Future<void> _write(String key, String value) =>
       _db.into(_db.settings).insertOnConflictUpdate(
             SettingsCompanion.insert(key: key, value: value),

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:riyaz/data/db/app_database.dart';
 import 'package:riyaz/data/db/connection.dart';
@@ -14,6 +15,7 @@ import 'package:riyaz/domain/time/clock.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import 'resolution.dart';
+import 'theme_preference.dart';
 import 'settings.dart';
 
 part 'providers.g.dart';
@@ -35,6 +37,30 @@ Clock clock(Ref ref) => const SystemClock();
 /// Tests that do not care about persistence get the defaults for free.
 @Riverpod(keepAlive: true)
 AppSettings initialAppSettings(Ref ref) => const AppSettings();
+
+/// The theme the app started with, read alongside [initialAppSettings] before
+/// the first frame. Overridden in `main()`.
+///
+/// Read at startup rather than watched asynchronously so the first frame is
+/// already the right theme: a provider that resolved later would paint the
+/// light theme and then snap to dark, which is the flash every dark-mode
+/// implementation is judged by.
+@Riverpod(keepAlive: true)
+ThemeMode initialThemeMode(Ref ref) => ThemePreference.fallback;
+
+/// The live theme choice, and the only way to change it.
+@Riverpod(keepAlive: true)
+class ThemeModeController extends _$ThemeModeController {
+  @override
+  ThemeMode build() => ref.watch(initialThemeModeProvider);
+
+  Future<void> select(ThemeMode mode) async {
+    await ref
+        .read(settingsRepositoryProvider)
+        .writeRaw(ThemePreference.key, ThemePreference.encode(mode));
+    state = mode;
+  }
+}
 
 @Riverpod(keepAlive: true)
 SettingsRepository settingsRepository(Ref ref) =>
