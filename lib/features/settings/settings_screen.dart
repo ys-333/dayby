@@ -8,6 +8,7 @@ import 'package:riyaz/data/backup/backup_service.dart';
 import 'package:riyaz/data/seed/seed_loader.dart';
 import 'package:riyaz/domain/seed/synthetic_seeder.dart';
 import 'package:riyaz/features/home/today_controller.dart';
+import 'package:riyaz/features/notifications/notification_spike.dart';
 
 import 'backup_controller.dart';
 
@@ -92,6 +93,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Load synthetic data'),
               subtitle: const Text('A year of generated history'),
               onTap: _busy ? null : _loadSeed,
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_active_outlined),
+              title: const Text('Notification spike'),
+              subtitle: const Text('Schedule two test reminders, +2 and +15 min'),
+              onTap: _busy ? null : _runNotificationSpike,
             ),
           ],
         ],
@@ -213,6 +220,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'Imported ${result.inserted} records'
           '${result.skipped > 0 ? ', skipped ${result.skipped} already present' : ''}'
           '${result.dropped > 0 ? ', dropped ${result.dropped} orphaned' : ''}.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// **THROWAWAY.** Remove with `notification_spike.dart` before Phase 3.
+  ///
+  /// Answers the one question the test suite cannot: does this phone actually
+  /// deliver a scheduled notification, and does it survive a reboot?
+  Future<void> _runNotificationSpike() async {
+    setState(() => _busy = true);
+    try {
+      final zone = ref.read(accountingCalendarProvider).zone;
+      final result = await NotificationSpike(zone).run();
+      if (!mounted) return;
+      setState(() => _status = result.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
