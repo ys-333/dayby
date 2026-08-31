@@ -95,9 +95,9 @@ Two claims are tracked separately and neither implies the other:
 
 ## Current position
 
-**Phase:** notifications — Phase 0 of 6 done (`docs/specs/2026-09-01-notifications.md`)
-**Blocked on:** nothing. Phases 1–2 are pure domain and need no device.
-**Last verified state:** 453 tests green, `flutter analyze` clean project-wide,
+**Phase:** notifications — Phases 0–2 of 6 done (`docs/specs/2026-09-01-notifications.md`)
+**Blocked on:** nothing. Phase 3 is the platform gateway; the package is approved and spiked.
+**Last verified state:** 507 tests green, `flutter analyze` clean project-wide,
 `tool/check_arch.sh` clean, codegen clean, debug APK builds. Three-tab app:
 tracking, history (calendar + week grid), insights. Analytics read from
 materialised rollups. **Never run on a device** — no feel verification at all.
@@ -169,6 +169,36 @@ data loss until Phase 9, and that cost rose every day the app was used.
       **Not visually confirmed in light theme** — the phone moved to another app
       before that screenshot. Dark renders correctly; the light render rests on
       the unit tests and on both themes having shipped since the palette work.
+
+### Notifications — Phases 1 and 2 (2026-09-01)
+
+- [x] **Phase 1, when it fires** — `unit` (22).
+      `lib/domain/notifications/reminder_schedule.dart`, pure and
+      `Clock`-injected; `check_arch.sh` clean. Seven days ahead, one per day,
+      soonest first.
+      **DST is asserted as a property, not a wall-clock value**: on the day
+      02:30 does not exist and on the day it happens twice, exactly one reminder
+      is emitted. A reminder must not vanish because the clock jumped, nor
+      arrive twice because it repeated — and the hour the user picked still
+      reads 08:00 after the transition.
+      A reminder before 04:00 describes the **previous** accounting day; one at
+      exactly 04:00 describes the new one. Ids derive from the accounting date
+      rather than batch position, so "cancel today's reminder" survives a
+      reschedule.
+- [x] **Phase 2, what it says** — `unit` (24).
+      **Correction: this lives in `lib/features/notifications/`, not
+      `lib/domain/` as the spec had it.** It reads `TodayView` and `WeekReview`,
+      which are presentation models, and the domain may not import them. A
+      parallel domain type existing only to dodge that rule would have been
+      machinery without a test.
+      Empty, all-done, all-skipped and all-paused days all produce **no
+      notification** — one rule, because only pending items are worth a
+      reminder. The count in the title is derived from the list beside it, so
+      the two cannot disagree. The review's "strongest" clause defers entirely
+      to `namesAreMeaningful`, so a tie names no one.
+      Both paths are asserted **unable to scold**, including on a 20% week —
+      which is exactly when the copy must not moralise.
+- Phases 1 and 2 needed no device and no package: 46 tests, all deterministic.
 
 ---
 

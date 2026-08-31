@@ -1,6 +1,6 @@
 # Notifications — spec and build plan
 
-**Status:** Phase 0 done, Phases 1–2 next. `flutter_local_notifications ^22.3.0` is in,
+**Status:** Phases 0–2 done. Phase 3 (the gateway) is next. `flutter_local_notifications ^22.3.0` is in,
 the manifest and Gradle are wired, and a throwaway spike is installed on the
 iQOO awaiting a delivery observation. No phase in §9 has started.
 **Decision 1 (the package) is answered — yes**, 2026-09-01. Decision 2 (weekly
@@ -375,21 +375,56 @@ nothing may be built on it.
       call from `update()` fails 2 of the 6.
 - [x] Existing tests still green — 436 → 453, analyze clean, `check_arch.sh` ok
 
-### Phase 1 — Domain: when does it fire
+### Phase 1 — Domain: when does it fire — **done**, `unit` (22)
 
-- [ ] `PendingReminder` + `reminder_schedule.dart` — `unit`
-- [ ] Next-7-days computation from a `FixedClock` — `unit`
-- [ ] DST spring-forward and fall-back around the reminder hour — `unit`
-- [ ] A reminder time *before* the 04:00 boundary belongs to the previous accounting day — `unit`
-- [ ] Weekly review fires the first morning after week close, honouring `weekStartsOn` — `unit`
+- [x] `PendingReminder` + `reminder_schedule.dart` in `lib/domain/notifications/`.
+      `check_arch.sh` clean: pure, `Clock`-injected, no Flutter.
+- [x] Next-7-days from a `FixedClock`, one per day, soonest first. Today is
+      included when its time is still ahead and skipped once it has passed;
+      a reminder due in one minute is not lost.
+- [x] DST spring-forward and fall-back. Asserted as a **property** rather than a
+      wall-clock value: on the day 02:30 does not exist, and on the day it
+      happens twice, exactly one reminder is emitted. A reminder must not vanish
+      because the clock jumped, nor arrive twice because it repeated. The
+      wall-clock hour is also held across the transition — the user picked
+      "08:00" on a clock, and it must still read 08:00 afterwards.
+- [x] A reminder before 04:00 describes the **previous** accounting day, and one
+      exactly at 04:00 describes the new one. A non-default boundary moves the
+      cut with it.
+- [x] Weekly review fires on the first accounting day of a week and reports the
+      week that just closed, honouring `weekStartsOn` (verified against Sunday).
+      A review day carries the review **only** — never both.
+- [x] Ids derive from the accounting date, not from position in the batch, so
+      "cancel today's reminder" still means the same thing after a reschedule.
 
-### Phase 2 — Domain: what does it say
+### Phase 2 — What does it say — **done**, `unit` (24)
 
-- [ ] `reminder_copy.dart`: `TodayView` → title/body/expanded — `unit`
-- [ ] Empty, all-done, all-paused and all-skipped days each produce **no notification** — `unit`
-- [ ] Period commitments carry `2/4 this week` — `unit`
-- [ ] `WeekReview` → review copy; comparison and "strongest" clauses dropped when unavailable — `unit`
-- [ ] Same day carrying A and B posts B only — `unit`
+**Correction: this lives in `lib/features/notifications/`, not `lib/domain/`.**
+The spec put it in the domain, which is impossible — it reads `TodayView` and
+`WeekReview`, presentation models in `lib/features/`, and `check_arch.sh` rightly
+forbids the domain from importing them. Inventing a parallel domain type purely
+to dodge that rule would have added machinery without adding a test. Nothing
+here needs a widget pumped; it is pure functions over plain objects.
+
+- [x] `TodayView` → title / collapsed body / expanded lines. Three or fewer are
+      listed plainly; more carry the count, and **the count is derived from the
+      same list it sits beside**, so the two go stale together or not at all.
+- [x] Empty, all-done, all-skipped and all-paused days each produce **no
+      notification** — one rule covers all four, because only *pending* items
+      are worth a reminder. A partly finished day still reminds about the rest
+      and does not re-list what is done.
+- [x] Period commitments carry `2/4 this week` in the expanded form (and
+      `1/2 this month` for monthly). The collapsed line stays plain names —
+      it is one line in a shade.
+- [x] `WeekReview` → review copy. The comparison clause is dropped with no
+      previous week and when the score is unchanged; a decline is stated as a
+      fact (`Down from 92%.`) and never as a verdict. The "strongest" clause
+      defers entirely to `namesAreMeaningful`, so a single commitment or a tie
+      names no one. With both clauses gone it still gives a reason to open.
+- [x] Neither copy path can scold — asserted directly, including on a 20%
+      week, which is exactly when the copy must not moralise.
+- [x] Same day carrying both posts the review only — covered in Phase 1, where
+      the decision is made.
 
 ### Phase 3 — Gateway
 
